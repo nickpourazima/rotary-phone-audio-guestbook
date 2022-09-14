@@ -1,0 +1,9 @@
+hook_gpio: 22
+rotary_gpio: 3
+rotary_hold_time: 0.25
+rotary_hold_repeat: true
+playback_reduction: 16
+beep_reduction: 24
+sample_rate: 44100
+buffer_size: 4096
+channels: 2
