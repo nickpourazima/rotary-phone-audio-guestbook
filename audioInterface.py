@@ -19,15 +19,15 @@ class AudioInterface:
         self.hook = hook
         self.samp_rate = config["sample_rate"]
         self.recording_limit = config["recording_limit"]
+        self.dev_index = config["alsa_hw_mapping"] # device index found by p.get_device_info_by_index(ii)
 
     def record(self):
         # create pyaudio stream
-        dev_index = 1  # device index found by p.get_device_info_by_index(ii)
         self.stream = self.audio.open(
             format=self.format,
             rate=self.samp_rate,
             channels=self.chans,
-            input_device_index=dev_index,
+            input_device_index=self.dev_index,
             input=True,
             frames_per_buffer=self.chunk,
         )

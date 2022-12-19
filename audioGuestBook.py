@@ -46,7 +46,7 @@ def off_hook() -> None:
         - config["beep_reduction"]
     )
 
-    # now, while phone is not off the hook, record audio from the microphone
+    # now, while phone is off the hook, record audio from the microphone
     print("recording")
     audio_interface.record()
     audio_interface.stop()
