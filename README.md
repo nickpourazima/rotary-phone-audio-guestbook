@@ -18,6 +18,7 @@
       - [audioGuestBook systemctl service](#audioguestbook-systemctl-service)
     - [Operation Mode 1: audioGuestBook](#operation-mode-1-audioguestbook)
     - [Operation Mode 2: audioGuestBookwithRotaryDialer](#operation-mode-2-audioguestbookwithrotarydialer)
+  - [Troubleshooting](#troubleshooting)
 
 This project transforms a rotary phone into a voice recorder for use at special events (i.e. wedding audio guestbook, etc.).
 
@@ -141,7 +142,7 @@ To replace:
 ### [Config](config.yaml)
 
 - This file allows you to customize your own set up (edit rpi pins, audio reduction, alsa mapping, etc), modify the yaml as necessary.
-
+- Ensure the sample rate is supported by your audio interface (default = 44100 Hz (decimal not required))
 - For GPIO mapping, refer to the wiring diagram specific to your rpi:
   ![image](images/rpi_GPIO.png)
 
@@ -179,3 +180,37 @@ systemctl start audioGuestBook.service
 - The idea was to playback special messages when particular users dial a certain number combination (i.e. 909 would play back a message for certain guests who lived with the groom in that area code).
 - In this mode of operation the users will need to dial 0 on the rotary dialer in order to initiate the voicemail.
 - The rotary dialer is a bit more complex to set up, you need a pull up resistor connected between the F screw terminal and 5V on the rpi and the other end on GPIO 23. #TODO: Diagram
+
+## Troubleshooting
+
+### Verify default audio interface
+
+A few users had issues where audio I/O was defaulting to HDMI. To alleviate this, check the following:
+
+#### Check the Sound Card Configuration:
+
+Verify the available sound devices using the following command:
+
+```bash
+aplay -l
+```
+
+_Ensure that your USB audio interface is listed and note the card and device numbers._
+
+#### Set the Default Sound Card:
+
+If you want to route audio through your USB audio interface, you'll need to make it the default sound card.
+Edit the ALSA configuration file (usually located at `/etc/asound.conf` or `~/.asoundrc`) and add the following:
+
+```bash
+defaults.pcm.card X
+defaults.ctl.card X
+```
+
+_Replace X with the card number of your USB audio interface obtained from the previous step._
+
+#### Restart ALSA
+
+```bash
+sudo /etc/init.d/alsa-utils restart
+```
