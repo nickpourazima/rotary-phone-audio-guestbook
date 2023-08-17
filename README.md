@@ -19,6 +19,7 @@
     - [Operation Mode 1: audioGuestBook](#operation-mode-1-audioguestbook)
     - [Operation Mode 2: audioGuestBookwithRotaryDialer](#operation-mode-2-audioguestbookwithrotarydialer)
   - [Troubleshooting](#troubleshooting)
+  - [Support](#support)
 
 This project transforms a rotary phone into a voice recorder for use at special events (i.e. wedding audio guestbook, etc.).
 
