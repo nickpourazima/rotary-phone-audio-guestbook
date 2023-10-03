@@ -9,20 +9,22 @@ pip3 install pydub pyaudio PyYAML
 # Get the directory of the currently executing script
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Change ownership of the entire project directory to the current user
+sudo chown -R $USER:$USER $DIR
+
 # Replace placeholders in the service file and save to temporary location
-sed "s|<path-to-project>|$DIR|g" rotaryGuestBook.service.template > /tmp/rotaryGuestBook.service
+sed "s|<path-to-project>|$DIR|g" audioGuestBook.service.template > /tmp/audioGuestBook.service
 
 # Move the modified service file to systemd directory
-sudo mv /tmp/rotaryGuestBook.service /etc/systemd/system/
+sudo mv /tmp/audioGuestBook.service /etc/systemd/system/
 
 # Create required directories
-mkdir -p $DIR/recordings
+sudo mkdir -p $DIR/recordings
 
-# Set permissions for python scripts
-chmod +x $DIR/audioGuestBook.py
-chmod +x $DIR/audioInterface.py
+# Set execution permissions for the main script
+sudo chmod +x $DIR/audioGuestBook.py
 
 # Reload systemd, enable and start the service
 sudo systemctl daemon-reload
-sudo systemctl enable rotaryGuestBook.service
-sudo systemctl start rotaryGuestBook.service
+sudo systemctl enable audioGuestBook.service
+sudo systemctl start audioGuestBook.service

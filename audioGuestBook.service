@@ -6,7 +6,7 @@ After=multi-user.target
 WorkingDirectory=<path-to-project>
 Type=simple
 Restart=always
-ExecStart=/usr/bin/env python3 <path-to-project>/rotaryGuestBook.py
+ExecStart=/usr/bin/env python3 <path-to-project>/audioGuestBook.py
 
 [Install]
 WantedBy=multi-user.target
