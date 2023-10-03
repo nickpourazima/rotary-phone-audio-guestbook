@@ -154,7 +154,21 @@ To replace:
 
 #### [audioGuestBook systemctl service](/audioGuestBook.service)
 
-This service starts the python script on boot. Place it in the `/etc/systemd/system` directory.
+This service starts the python script on boot. Place it in the `/etc/systemd/system` directory and modify the **WorkingDirectoy** and **ExecStart** paths below according to the specific directory in which you cloned the project, i.e.:
+
+```sh
+[Unit]
+Description=Rotary Phone Guest Book Project
+After=multi-user.target
+[Service]
+WorkingDirectory=/home/<username>/Desktop/rotaryGuestBook
+User=<username>
+Type=simple
+Restart=always
+ExecStart=/usr/bin/env python3 /home/<username>/Desktop/rotaryGuestBook/rotaryGuestBook.py
+[Install]
+WantedBy=multi-user.target
+```
 
 ```sh
 systemctl enable audioGuestBook.service
