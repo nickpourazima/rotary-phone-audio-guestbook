@@ -1,28 +1,52 @@
 #! /usr/bin/env python3
 
-import pyaudio
+import logging
 import time
 import wave
+from typing import List
+
+import pyaudio
 from pydub import AudioSegment
-from pydub.effects import normalize, compress_dynamic_range
+from pydub.effects import compress_dynamic_range, normalize
 from pydub.scipy_effects import band_pass_filter
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class AudioInterface:
-    def __init__(self, config, hook) -> None:
-        self.audio = pyaudio.PyAudio()
-        self.chunk = config["buffer_size"]
-        self.chans = config["channels"]
-        self.format = pyaudio.paInt16  # 16-bit resolution
-        self.frames = []  # raw data frames recorded from mic
+    def __init__(
+        self,
+        hook,
+        buffer_size,
+        channels,
+        format,
+        sample_rate,
+        recording_limit,
+        dev_index,
+    ) -> None:
+        self.chunk = buffer_size
+        self.chans = channels
+        self.format = format
+        self.frames: List[bytes] = []
         self.hook = hook
-        self.samp_rate = config["sample_rate"]
-        self.recording_limit = config["recording_limit"]
-        self.dev_index = config["alsa_hw_mapping"] # device index found by p.get_device_info_by_index(ii)
+        self.samp_rate = sample_rate
+        self.recording_limit = recording_limit
+        self.dev_index = dev_index
+
+        self.audio = None
+        self.stream = None
+
+    def init_audio(self):
+        if self.audio is None:
+            self.audio = pyaudio.PyAudio()
+        if self.stream is not None:
+            self.stream.stop_stream()
+            self.stream.close()
+            self.stream = None
 
     def record(self):
-        # create pyaudio stream
+        self.init_audio()
         self.stream = self.audio.open(
             format=self.format,
             rate=self.samp_rate,
@@ -31,6 +55,7 @@ class AudioInterface:
             input=True,
             frames_per_buffer=self.chunk,
         )
+
         # loop through stream and append audio chunks to frame array
         try:
             start = time.time()
@@ -41,34 +66,33 @@ class AudioInterface:
                 else:
                     break
         except KeyboardInterrupt:
-            print("Done recording")
+            logger.info("Done recording")
         except Exception as e:
-            print(str(e))
+            logger.error(str(e))
 
     def play(self, file):
-        self.wf = wave.open(file, "rb")
-        self.stream = self.audio.open(
-            format=self.audio.get_format_from_width(self.wf.getsampwidth()),
-            channels=self.wf.getnchannels(),
-            rate=self.wf.getframerate(),
-            output=True,
-        )
-        """ Play entire file """
-        data = self.wf.readframes(self.chunk)
-        while len(data):
-            self.stream.write(data)
-            data = self.wf.readframes(self.chunk)
+        self.init_audio()
+        with wave.open(file, "rb") as wf:
+            self.stream = self.audio.open(
+                format=self.audio.get_format_from_width(wf.getsampwidth()),
+                channels=wf.getnchannels(),
+                rate=wf.getframerate(),
+                output=True,
+            )
+            data = wf.readframes(self.chunk)
+            while data:
+                self.stream.write(data)
+                data = wf.readframes(self.chunk)
 
     def stop(self):
-        # stop the stream
-        self.stream.stop_stream()
-        # close it
-        self.stream.close()
-        # terminate the pyaudio instantiation
-        self.audio.terminate()
+        if self.stream:
+            self.stream.stop_stream()
+            self.stream.close()
+
+        if self.audio:
+            self.audio.terminate()
 
     def close(self, output_file):
-        # save the audio frames as .wav file
         with wave.open(output_file, "wb") as wavefile:
             wavefile.setnchannels(self.chans)
             wavefile.setsampwidth(self.audio.get_sample_size(self.format))
@@ -76,23 +100,22 @@ class AudioInterface:
             wavefile.writeframes(b"".join(self.frames))
 
     def postProcess(self, outputFile):
-        """
-        TODO: Evaluate whether this is worthwhile...
-        """
         source = AudioSegment.from_wav(outputFile + ".wav")
+        filtered = self.filter_audio(source)
+        normalized = self.normalize_audio(filtered)
+        compressed = self.compress_audio(normalized)
 
-        print("Filtering...")
-        filtered = band_pass_filter(source, 300, 10000)
-        print("Normalizing...")
-        normalized = normalize(filtered)
-
-        print("Compress Dynamic Range")
-        compressed = compress_dynamic_range(normalized)
-
-        print("Exporting normalized")
         normalized.export(outputFile + "normalized.wav", format="wav")
-
-        print("Exporting compressed")
         compressed.export(outputFile + "compressed.mp3", format="mp3")
 
-        print("Finished...")
+    def filter_audio(self, audio):
+        logger.info("Filtering...")
+        return band_pass_filter(audio, 300, 10000)
+
+    def normalize_audio(self, audio):
+        logger.info("Normalizing...")
+        return normalize(audio)
+
+    def compress_audio(self, audio):
+        logger.info("Compress Dynamic Range")
+        return compress_dynamic_range(audio)

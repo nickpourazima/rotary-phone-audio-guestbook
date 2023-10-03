@@ -1,11 +1,12 @@
 [Unit]
 Description=Rotary Phone Guest Book Project
 After=multi-user.target
+
 [Service]
-WorkingDirectory=/home/<username>/Desktop/rotaryGuestBook
-User=<username>
+WorkingDirectory=<path-to-project>
 Type=simple
 Restart=always
-ExecStart=/usr/bin/env python3 /home/<username>/Desktop/rotaryGuestBook/rotaryGuestBook.py
+ExecStart=/usr/bin/env python3 <path-to-project>/rotaryGuestBook.py
+
 [Install]
 WantedBy=multi-user.target

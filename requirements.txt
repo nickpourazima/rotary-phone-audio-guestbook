@@ -1,4 +1,0 @@
-gpiozero==1.6.2
-pyaudio==0.2.12
-pydub==0.25.1
-PyYAML==6.0

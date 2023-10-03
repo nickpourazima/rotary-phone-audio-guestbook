@@ -12,13 +12,17 @@
     - [Microphone Replacement (Optional)](#microphone-replacement-optional)
   - [Software](#software)
     - [Dev Environment](#dev-environment)
-    - [Dependencies](#dependencies)
+    - [Installation](#installation)
+    - [audioGuestBook systemctl service](#audioguestbook-systemctl-service)
     - [Config](#config)
     - [AudioInterface Class](#audiointerface-class)
-      - [audioGuestBook systemctl service](#audioguestbook-systemctl-service)
     - [Operation Mode 1: audioGuestBook](#operation-mode-1-audioguestbook)
     - [Operation Mode 2: audioGuestBookwithRotaryDialer](#operation-mode-2-audioguestbookwithrotarydialer)
   - [Troubleshooting](#troubleshooting)
+    - [Verify default audio interface](#verify-default-audio-interface)
+      - [Check the Sound Card Configuration](#check-the-sound-card-configuration)
+      - [Set the Default Sound Card](#set-the-default-sound-card)
+      - [Restart ALSA](#restart-alsa)
   - [Support](#support)
 
 This project transforms a rotary phone into a voice recorder for use at special events (i.e. wedding audio guestbook, etc.).
@@ -37,29 +41,29 @@ Since this was a trial by fire type of scenario there ended up being a few gotch
 
 ### Future Work (Action Items)
 
-A few weeks before the wedding I had the code registering dialed numbers from the rotary encoder with the goal of playing back special messages for certain guests who dialed a certain combination (i.e. dial an area code to hear a special message to my old roomates). The details of this operation mode are described in [Mode 2](#operation-mode-2-rotaryguestbookwithrotarydialer) below. In order to activate this mode I had to wait for input when the phone was off the hook. This required an extra step of dialing zero before leaving a normal voice message. In the end we decided to keep it simple and I've thus migrated this code to the dev branch along with the code to run through post-porcessing the audio in a separate process.
+A few weeks before the wedding I had the code registering dialed numbers from the rotary encoder with the goal of playing back special messages for certain guests who dialed a certain combination (i.e. dial an area code to hear a special message to my old roomates). The details of this operation mode are described in [Mode 2](#operation-mode-2-audioguestbookwithrotarydialer) below. In order to activate this mode I had to wait for input when the phone was off the hook. This required an extra step of dialing zero before leaving a normal voice message. In the end we decided to keep it simple and I've thus migrated this code to the dev branch along with the code to run through post-porcessing the audio in a separate process.
 If any one is interested in expanding this please feel free.
 
 I would also like to thread the audio playback so I can have a monitor/watchdog service terminate the thread upon hook callback so that the message doesn't continue playing once the user hangs up.
 
 ## Materials
 
-| Part|Notes|Quantity|Cost|
-| - | - | - | - |
-| [rotary phone](https://www.ebay.com/b/Rotary-Dial-Telephone/38038/bn_55192308) | Estate/garage/yard sales are probably the best places to find once of these. Ideally one with a phone jack since we will be using these four wires extensively. | 1 | $0.00-$60.00 |
-| [raspberry pi zero](https://www.raspberrypi.com/products/raspberry-pi-zero/) | I didn't realize how hard these are to find these days. You can use any rpi or arduino style single-board computer but be aware of size constraints (i.e. must fit inside the rotary phone enclosure) | 1 | $9.99 |
-| [raspberry pi zero case](https://www.adafruit.com/product/3252) | Optional: added for protection. One of the cases on Amazon has a heat-sink cutout which might be nice for better heat dissapation since it will all be enclosed in the end. | 1 | $4.95 |
-| [micro SD card](https://a.co/d/1gb2zhC) | Any high capacity/throughput micro SD card that is rpi compatible | 1 | $8.99 |
-| [USB Audio Adapter](https://www.adafruit.com/product/1475) | Note: I removed the external plastic shell and directly soldered the wires instead of using the female 3.5mm receptacle. | 1 | $4.95 |
-| [USB OTG Host Cable - MicroB OTG male to A female](https://www.adafruit.com/product/1099) | | 1 | $2.50 |
-| --- | **--- If you don't want to solder anything ---** | --- | --- |
-| [3.5mm Male to Screw Terminal Connector](https://www.parts-express.com/3.5mm-Male-to-Screw-Terminal-Connector-090-110?quantity=1&utm_source=google&utm_medium=cpc&utm_campaign=18395892906&utm_content=145242146127&gadid=623430178298&gclid=CjwKCAiAioifBhAXEiwApzCztl7aVb18WP4hDxnlQUCHsb62oIcnduFCSCbn9LFkZovYTQdr6omb3RoCD_gQAvD_BwE) | Optional: can connect the handset cables directly to the USB audio interface via these screw terminals | 2 | $1.37 |
-| --- | **--- If running off a battery ---** | --- | --- |
-| [LiPo Battery](https://www.adafruit.com/product/2011)| Optional: maximize capacity based on what will fit within your rotary enclosure. |1| $12.50 |
-| [LiPo Shim](https://www.adafruit.com/product/3196)| Optional: if you plan to run this off a LiPo I would recommend something like this to interface with the rpi zero. |1| $9.95 |
-| [LiPo Charger](https://www.adafruit.com/product/1904) | Optional: for re-charging the LiPo. |1| $6.95 |
-| --- | **--- If replacing the built-it microphone ---** | --- | --- |
-| [LavMic](https://www.amazon.com/dp/B01N6P80OQ?ref=nb_sb_ss_w_as-reorder-t1_ypp_rep_k3_1_9&amp=&crid=15WZEWMZ17EM9&amp=&sprefix=saramonic) | Optional: if you'd like to replace the carbon microphone. This is an omnidirectional lavalier mic and outputs via a 3.5mm TRS | 1 | $24.95 |
+| Part                                                                                                                                                                                                                                                                                                                                      | Notes                                                                                                                                                                                                 | Quantity | Cost         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------ |
+| [rotary phone](https://www.ebay.com/b/Rotary-Dial-Telephone/38038/bn_55192308)                                                                                                                                                                                                                                                            | Estate/garage/yard sales are probably the best places to find once of these. Ideally one with a phone jack since we will be using these four wires extensively.                                       | 1        | $0.00-$60.00 |
+| [raspberry pi zero](https://www.raspberrypi.com/products/raspberry-pi-zero/)                                                                                                                                                                                                                                                              | I didn't realize how hard these are to find these days. You can use any rpi or arduino style single-board computer but be aware of size constraints (i.e. must fit inside the rotary phone enclosure) | 1        | $9.99        |
+| [raspberry pi zero case](https://www.adafruit.com/product/3252)                                                                                                                                                                                                                                                                           | Optional: added for protection. One of the cases on Amazon has a heat-sink cutout which might be nice for better heat dissapation since it will all be enclosed in the end.                           | 1        | $4.95        |
+| [micro SD card](https://a.co/d/1gb2zhC)                                                                                                                                                                                                                                                                                                   | Any high capacity/throughput micro SD card that is rpi compatible                                                                                                                                     | 1        | $8.99        |
+| [USB Audio Adapter](https://www.adafruit.com/product/1475)                                                                                                                                                                                                                                                                                | Note: I removed the external plastic shell and directly soldered the wires instead of using the female 3.5mm receptacle.                                                                              | 1        | $4.95        |
+| [USB OTG Host Cable - MicroB OTG male to A female](https://www.adafruit.com/product/1099)                                                                                                                                                                                                                                                 |                                                                                                                                                                                                       | 1        | $2.50        |
+| ---                                                                                                                                                                                                                                                                                                                                       | **--- If you don't want to solder anything ---**                                                                                                                                                      | ---      | ---          |
+| [3.5mm Male to Screw Terminal Connector](https://www.parts-express.com/3.5mm-Male-to-Screw-Terminal-Connector-090-110?quantity=1&utm_source=google&utm_medium=cpc&utm_campaign=18395892906&utm_content=145242146127&gadid=623430178298&gclid=CjwKCAiAioifBhAXEiwApzCztl7aVb18WP4hDxnlQUCHsb62oIcnduFCSCbn9LFkZovYTQdr6omb3RoCD_gQAvD_BwE) | Optional: can connect the handset cables directly to the USB audio interface via these screw terminals                                                                                                | 2        | $1.37        |
+| ---                                                                                                                                                                                                                                                                                                                                       | **--- If running off a battery ---**                                                                                                                                                                  | ---      | ---          |
+| [LiPo Battery](https://www.adafruit.com/product/2011)                                                                                                                                                                                                                                                                                     | Optional: maximize capacity based on what will fit within your rotary enclosure.                                                                                                                      | 1        | $12.50       |
+| [LiPo Shim](https://www.adafruit.com/product/3196)                                                                                                                                                                                                                                                                                        | Optional: if you plan to run this off a LiPo I would recommend something like this to interface with the rpi zero.                                                                                    | 1        | $9.95        |
+| [LiPo Charger](https://www.adafruit.com/product/1904)                                                                                                                                                                                                                                                                                     | Optional: for re-charging the LiPo.                                                                                                                                                                   | 1        | $6.95        |
+| ---                                                                                                                                                                                                                                                                                                                                       | **--- If replacing the built-it microphone ---**                                                                                                                                                      | ---      | ---          |
+| [LavMic](https://www.amazon.com/dp/B01N6P80OQ?ref=nb_sb_ss_w_as-reorder-t1_ypp_rep_k3_1_9&amp=&crid=15WZEWMZ17EM9&amp=&sprefix=saramonic)                                                                                                                                                                                                 | Optional: if you'd like to replace the carbon microphone. This is an omnidirectional lavalier mic and outputs via a 3.5mm TRS                                                                         | 1        | $24.95       |
 
 ## Hardware
 
@@ -68,27 +72,27 @@ I would also like to thread the audio playback so I can have a monitor/watchdog 
 #### Hook
 
 - Use multimeter to do a continuity check to find out which pins control the hook:
-  
-| On-hook --> Open circuit (Value == 1)  | Off-hook --> Current flowing |
-| ------------- | ------------- |
-| ![image](images/hook_test_1.jpg) | ![image](images/hook_test_2.jpg)  |
+
+| On-hook --> Open circuit (Value == 1) | Off-hook --> Current flowing     |
+| ------------------------------------- | -------------------------------- |
+| ![image](images/hook_test_1.jpg)      | ![image](images/hook_test_2.jpg) |
 
 - The B screw terminal on the rotary phone is connected to the black wire which is grounded to the rpi.
 - The L2 screw terminal on the rotary phone is connected to the white wire which is connected to GPIO pin 22 on the rpi.
 
   ![image](images/pi_block_terminal_wiring.jpg)
 
-- *Note: the green wire was used for the experimental rotary encoder feature identified in the [future work](#future-work-action-items) section.*
+- _Note: the green wire was used for the experimental rotary encoder feature identified in the [future work](#future-work-action-items) section._
 
-| Rotary Phone Block Terminal  | Top-down view |
-| ------------- | ------------- |
-| ![image](images/block_terminal.jpg) | ![image](images/top_view_block_terminal.jpg)  |
-  
+| Rotary Phone Block Terminal         | Top-down view                                |
+| ----------------------------------- | -------------------------------------------- |
+| ![image](images/block_terminal.jpg) | ![image](images/top_view_block_terminal.jpg) |
+
 #### Phone Cord
 
 - The wires from the handset cord need to be connected to the USB audio interface
   - I soldered it but you can alternatively use 2x [3.5mm Male to Screw Terminal Connector](https://www.parts-express.com/3.5mm-Male-to-Screw-Terminal-Connector-090-110?quantity=1&utm_source=google&utm_medium=cpc&utm_campaign=18395892906&utm_content=145242146127&gadid=623430178298&gclid=CjwKCAiAioifBhAXEiwApzCztl7aVb18WP4hDxnlQUCHsb62oIcnduFCSCbn9LFkZovYTQdr6omb3RoCD_gQAvD_BwE) which plug directly into the rpi.
-    - *Note: The USB audio interface looks weird in the pics since I stripped the plastic shell off in order to solder directly to the mic/speaker leads*
+    - _Note: The USB audio interface looks weird in the pics since I stripped the plastic shell off in order to solder directly to the mic/speaker leads_
 
 ![image](images/dissected_view_1.jpg)
 
@@ -132,13 +136,36 @@ To replace:
 
 [Here's](https://jayproulx.medium.com/headless-raspberry-pi-zero-w-setup-with-ssh-and-wi-fi-8ddd8c4d2742) a great guide to get the rpi setup headless w/ SSH & WiFi dialed in.
 
-### Dependencies
+### Installation
 
-- `pip3 install -r requirements.txt` or pip install each manually:
-  - [GPIOZero](https://gpiozero.readthedocs.io)
-  - [Pydub](http://pydub.com/)
-  - [PyAudio](https://people.csail.mit.edu/hubert/pyaudio/)
-  - [PyYAML](https://pyyaml.org/)
+After cloning the repository, there's an installer script available to ease the setup process. This script takes care of several tasks:
+
+1. Install required dependencies.
+2. Replace placeholders in the service file to adapt to your project directory.
+3. Move the modified service file to the systemd directory.
+4. Create necessary directories (recordings and sounds).
+5. Grant execution permissions to the Python scripts.
+6. Reload systemd, enable, and start the service.
+
+To run the installer, navigate to the project directory and execute:
+
+```bash
+chmod +x installer.sh
+./installer.sh
+```
+
+### [audioGuestBook systemctl service](audioGuestBook.service)
+
+The provided service ensures the Python script starts on boot. The installer script will place this service file in the `/etc/systemd/system`` directory and modify paths according to your project directory.
+
+To manually control the service:
+
+```sh
+sudo systemctl enable audioGuestBook.service
+sudo systemctl start audioGuestBook.service
+```
+
+This service ensures smooth operation without manual intervention every time your Raspberry Pi boots up.
 
 ### [Config](config.yaml)
 
@@ -151,29 +178,6 @@ To replace:
 
 - Utilizes pydub and pyaudio extensively.
 - Houses the main playback/record logic and has future #TODO expansion for postprocessing the audio. Would like to test on an rpi4 to see if it can handle it better for real-time applications.
-
-#### [audioGuestBook systemctl service](/audioGuestBook.service)
-
-This service starts the python script on boot. Place it in the `/etc/systemd/system` directory and modify the **WorkingDirectoy** and **ExecStart** paths below according to the specific directory in which you cloned the project, i.e.:
-
-```sh
-[Unit]
-Description=Rotary Phone Guest Book Project
-After=multi-user.target
-[Service]
-WorkingDirectory=/home/<username>/Desktop/rotaryGuestBook
-User=<username>
-Type=simple
-Restart=always
-ExecStart=/usr/bin/env python3 /home/<username>/Desktop/rotaryGuestBook/rotaryGuestBook.py
-[Install]
-WantedBy=multi-user.target
-```
-
-```sh
-systemctl enable audioGuestBook.service
-systemctl start audioGuestBook.service
-```
 
 ### Operation Mode 1: [audioGuestBook](/audioGuestBook.py)
 
@@ -189,7 +193,7 @@ systemctl start audioGuestBook.service
 
 ### Operation Mode 2: [audioGuestBookwithRotaryDialer](./todo/audioGuestBookwithRotaryDialer.py)
 
-***Note*:** Untested - decided not to go this route for my own wedding
+**_Note_:** Untested - decided not to go this route for my own wedding
 
 - This mode is a special modification of the normal operation and requires a slightly different wiring connection since it accepts input from the rotary dialer.
 - The idea was to playback special messages when particular users dial a certain number combination (i.e. 909 would play back a message for certain guests who lived with the groom in that area code).
@@ -202,7 +206,7 @@ systemctl start audioGuestBook.service
 
 A few users had issues where audio I/O was defaulting to HDMI. To alleviate this, check the following:
 
-#### Check the Sound Card Configuration:
+#### Check the Sound Card Configuration
 
 Verify the available sound devices using the following command:
 
@@ -212,7 +216,7 @@ aplay -l
 
 _Ensure that your USB audio interface is listed and note the card and device numbers._
 
-#### Set the Default Sound Card:
+#### Set the Default Sound Card
 
 If you want to route audio through your USB audio interface, you'll need to make it the default sound card.
 Edit the ALSA configuration file (usually located at `/etc/asound.conf` or `~/.asoundrc`) and add the following:
@@ -232,5 +236,5 @@ sudo /etc/init.d/alsa-utils restart
 
 ## Support
 
-If this code helped you or if you have some feedback, I'd be thrilled to [hear about it](mailto:dillpicholas@duck.com)! 
+If this code helped you or if you have some feedback, I'd be thrilled to [hear about it](mailto:dillpicholas@duck.com)!
 Feel like saying thanks? You can [buy me a coffee](https://www.buymeacoffee.com/dillpicholas) ☕.
