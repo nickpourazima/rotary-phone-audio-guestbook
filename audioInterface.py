@@ -93,11 +93,14 @@ class AudioInterface:
             self.audio.terminate()
 
     def close(self, output_file):
-        with wave.open(output_file, "wb") as wavefile:
-            wavefile.setnchannels(self.chans)
-            wavefile.setsampwidth(self.audio.get_sample_size(self.format))
-            wavefile.setframerate(self.samp_rate)
-            wavefile.writeframes(b"".join(self.frames))
+        try:
+            with wave.open(output_file, "wb") as wavefile:
+                wavefile.setnchannels(self.chans)
+                wavefile.setsampwidth(self.audio.get_sample_size(self.format))
+                wavefile.setframerate(self.samp_rate)
+                wavefile.writeframes(b"".join(self.frames))
+        except OSError as e:
+            logger.error(f"Error writing to file {output_file}. Error: {e}")
 
     def postProcess(self, outputFile):
         source = AudioSegment.from_wav(outputFile + ".wav")

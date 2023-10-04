@@ -68,7 +68,7 @@ def off_hook(args):
     audio_interface.record()
     audio_interface.stop()
 
-    output_file = BASE_DIR / "recordings" / f"{datetime.now().isoformat()}.wav"
+    output_file = str(BASE_DIR / "recordings" / f"{datetime.now().isoformat()}.wav")
     audio_interface.close(output_file)
     logger.info("Finished recording!")
 
