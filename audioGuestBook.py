@@ -46,23 +46,26 @@ def play_audio(filename, reduction=0):
         logger.error(f"Error playing {filename}. Error: {e}")
 
 
-def off_hook(args):
+def off_hook():
+    global hook, config
+
     logger.info("Phone off hook, ready to begin!")
+
     audio_interface = audioInterface.AudioInterface(
-        hook=args["hook"],
-        buffer_size=args["config"]["buffer_size"],
-        channels=args["config"]["channels"],
-        format=FORMATS.get(args["config"]["format"], pyaudio.paInt16),
-        sample_rate=args["config"]["sample_rate"],
-        recording_limit=args["config"]["recording_limit"],
-        dev_index=args["config"]["alsa_hw_mapping"],
+        hook=hook,
+        buffer_size=config["buffer_size"],
+        channels=config["channels"],
+        format=FORMATS.get(config["format"], pyaudio.paInt16),
+        sample_rate=config["sample_rate"],
+        recording_limit=config["recording_limit"],
+        dev_index=config["alsa_hw_mapping"],
     )
 
     logger.info("Playing voicemail message...")
-    play_audio("voicemail.wav", args["config"]["playback_reduction"])
+    play_audio("voicemail.wav", config["playback_reduction"])
 
     logger.info("Playing beep...")
-    play_audio("beep.wav", args["config"]["beep_reduction"])
+    play_audio("beep.wav", config["beep_reduction"])
 
     logger.info("recording")
     audio_interface.record()
@@ -78,10 +81,10 @@ def on_hook():
 
 
 def main():
+    global config, hook
     config = load_config()
     hook = Button(config["hook_gpio"])
-    args = {"config": config, "hook": hook}
-    hook.when_pressed = lambda: off_hook(args)
+    hook.when_pressed = off_hook
     hook.when_released = on_hook
     pause()
 
