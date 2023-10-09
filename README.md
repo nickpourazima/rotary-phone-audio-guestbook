@@ -19,6 +19,7 @@
     - [Operation Mode 1: audioGuestBook](#operation-mode-1-audioguestbook)
     - [Operation Mode 2: audioGuestBookwithRotaryDialer](#operation-mode-2-audioguestbookwithrotarydialer)
   - [Troubleshooting](#troubleshooting)
+    - [Configuring Hook Type](#configuring-hook-type)
     - [Verify default audio interface](#verify-default-audio-interface)
       - [Check the Sound Card Configuration](#check-the-sound-card-configuration)
       - [Set the Default Sound Card](#set-the-default-sound-card)
@@ -70,6 +71,13 @@ I would also like to thread the audio playback so I can have a monitor/watchdog 
 ### Wiring
 
 #### Hook
+
+**Understanding Hook Types:** Depending on your rotary phone model, the hook switch may be Normally Closed (NC) or Normally Open (NO). When the phone is on the hook:
+
+- NC: The circuit is closed (current flows).
+- NO: The circuit is open (no current).
+
+To accommodate either type, you'll need to update the `config.yaml` with the appropriate hook type setting.
 
 - Use multimeter to do a continuity check to find out which pins control the hook:
 
@@ -173,6 +181,7 @@ This service ensures smooth operation without manual intervention every time you
 - Ensure the sample rate is supported by your audio interface (default = 44100 Hz (decimal not required))
 - For GPIO mapping, refer to the wiring diagram specific to your rpi:
   ![image](images/rpi_GPIO.png)
+- **hook_type**: Define your hook switch type here. Set it to "NC" if your phone uses a Normally Closed hook switch or "NO" for Normally Open.
 
 ### [AudioInterface Class](audioInterface.py)
 
@@ -183,6 +192,7 @@ This service ensures smooth operation without manual intervention every time you
 
 - This is the main operation mode of the device.
 - There are two callbacks in main which poll the gpio pins for the specified activity (hook depressed, hook released).
+- In the code, depending on the `hook_type` set in the `config.yaml`, the software will adapt its behavior. For NC types, hanging up the phone will trigger the `on_hook` behavior, and lifting the phone will trigger the `off_hook` behavior. The opposite will be true for NO types.
 - Once triggered the appropriate function is called.
 - On hook (depressed)
   - Nothing happens
@@ -201,6 +211,10 @@ This service ensures smooth operation without manual intervention every time you
 - The rotary dialer is a bit more complex to set up, you need a pull up resistor connected between the F screw terminal and 5V on the rpi and the other end on GPIO 23. #TODO: Diagram
 
 ## Troubleshooting
+
+### Configuring Hook Type
+
+If you find that the behaviors for hanging up and lifting the phone are reversed, it's likely that the `hook_type` in `config.yaml` is incorrectly set. Ensure that it matches your phone's hook switch type (NC or NO).
 
 ### Verify default audio interface
 

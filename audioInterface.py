@@ -24,6 +24,7 @@ class AudioInterface:
         sample_rate,
         recording_limit,
         dev_index,
+        hook_type,
     ) -> None:
         self.chunk = buffer_size
         self.chans = channels
@@ -33,6 +34,7 @@ class AudioInterface:
         self.samp_rate = sample_rate
         self.recording_limit = recording_limit
         self.dev_index = dev_index
+        self.hook_type = hook_type
 
         self.audio = None
         self.stream = None
@@ -59,7 +61,7 @@ class AudioInterface:
         # loop through stream and append audio chunks to frame array
         try:
             start = time.time()
-            while self.hook.is_pressed:
+            while self.off_hook_condition():
                 if time.time() - start < self.recording_limit:
                     data = self.stream.read(self.chunk, exception_on_overflow=True)
                     self.frames.append(data)
@@ -69,6 +71,12 @@ class AudioInterface:
             logger.info("Done recording")
         except Exception as e:
             logger.error(str(e))
+
+    def off_hook_condition(self):
+        if self.hook_type == "NC":
+            return not self.hook.is_pressed
+        else:  # Assuming default is "NO" if not "NC"
+            return self.hook.is_pressed
 
     def play(self, file):
         self.init_audio()

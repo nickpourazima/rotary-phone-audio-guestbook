@@ -59,6 +59,7 @@ def off_hook():
         sample_rate=config["sample_rate"],
         recording_limit=config["recording_limit"],
         dev_index=config["alsa_hw_mapping"],
+        hook_type=config["hook_type"],
     )
 
     logger.info("Playing voicemail message...")
@@ -83,9 +84,14 @@ def on_hook():
 def main():
     global config, hook
     config = load_config()
-    hook = Button(config["hook_gpio"])
-    hook.when_pressed = off_hook
-    hook.when_released = on_hook
+    if config["hook_type"] == "NC":
+        hook = Button(config["hook_gpio"], pull_up=True)
+        hook.when_pressed = on_hook
+        hook.when_released = off_hook
+    else:  # Assuming NO if not NC
+        hook = Button(config["hook_gpio"], pull_up=False)
+        hook.when_pressed = off_hook
+        hook.when_released = on_hook
     pause()
 
 
