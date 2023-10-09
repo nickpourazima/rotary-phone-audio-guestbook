@@ -9,4 +9,6 @@ rotary_gpio: 23
 rotary_hold_repeat: true
 rotary_hold_time: 0.25
 sample_rate: 44100
-source_file: "audioGuestBook.py"
+source_file: audioGuestBook.py
+format: INT16
+hook_type: NC # or 'NO'

@@ -1,0 +1,12 @@
+[Unit]
+Description=Rotary Phone Guest Book Project
+After=multi-user.target
+
+[Service]
+WorkingDirectory=<path-to-project>
+Type=simple
+Restart=always
+ExecStart=/usr/bin/env python3 <path-to-project>/audioGuestBook.py
+
+[Install]
+WantedBy=multi-user.target
