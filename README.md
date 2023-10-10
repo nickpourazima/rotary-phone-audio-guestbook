@@ -42,8 +42,8 @@ Since this was a trial by fire type of scenario there ended up being a few gotch
 
 ### Future Work (Action Items)
 
-A few weeks before the wedding I had the code registering dialed numbers from the rotary encoder with the goal of playing back special messages for certain guests who dialed a certain combination (i.e. dial an area code to hear a special message to my old roomates). The details of this operation mode are described in [Mode 2](#operation-mode-2-audioguestbookwithrotarydialer) below. In order to activate this mode I had to wait for input when the phone was off the hook. This required an extra step of dialing zero before leaving a normal voice message. In the end we decided to keep it simple and I've thus migrated this code to the dev branch along with the code to run through post-porcessing the audio in a separate process.
-If any one is interested in expanding this please feel free.
+A few weeks before the wedding I had the code registering dialed numbers from the rotary encoder with the goal of playing back special messages for certain guests who dialed a certain combination (i.e. dial an area code to hear a special message to my old roomates). The details of this operation mode are described in [Mode 2](#operation-mode-2-audioguestbookwithrotarydialer) below. In order to activate this mode I had to wait for input when the phone was off the hook. This required an extra step of dialing zero before leaving a normal voice message. In the end we decided to keep it simple and I've thus migrated this code to the dev branch along with the code to run through post-processing the audio in a separate process.
+If anyone is interested in expanding this please feel free.
 
 I would also like to thread the audio playback so I can have a monitor/watchdog service terminate the thread upon hook callback so that the message doesn't continue playing once the user hangs up.
 
