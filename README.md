@@ -47,7 +47,7 @@ Additionally, threading the audio playback would be beneficial, allowing for a w
 
 ## Quick-Start
 
-To get started:
+After cloning the repo on the rpi:
 
 ```bash
 chmod +x installer.sh
