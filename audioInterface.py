@@ -66,6 +66,8 @@ class AudioInterface:
                     data = self.stream.read(self.chunk, exception_on_overflow=True)
                     self.frames.append(data)
                 else:
+                    # Notify the user that their recording time is up
+                    self.play("time_exceeded.wav")
                     break
         except KeyboardInterrupt:
             logger.info("Done recording")
@@ -110,14 +112,14 @@ class AudioInterface:
         except OSError as e:
             logger.error(f"Error writing to file {output_file}. Error: {e}")
 
-    def postProcess(self, outputFile):
-        source = AudioSegment.from_wav(outputFile + ".wav")
+    def post_process(self, output_file):
+        source = AudioSegment.from_wav(output_file + ".wav")
         filtered = self.filter_audio(source)
         normalized = self.normalize_audio(filtered)
         compressed = self.compress_audio(normalized)
 
-        normalized.export(outputFile + "normalized.wav", format="wav")
-        compressed.export(outputFile + "compressed.mp3", format="mp3")
+        normalized.export(output_file + "normalized.wav", format="wav")
+        compressed.export(output_file + "compressed.mp3", format="mp3")
 
     def filter_audio(self, audio):
         logger.info("Filtering...")

@@ -1,15 +1,20 @@
 # Rotary Phone Audio Guestbook
 
+This project transforms a rotary phone into a voice recorder for use at special events (i.e. wedding audio guestbook, etc.).
+
+![image](images/final_result_2.jpg)
+
 - [Rotary Phone Audio Guestbook](#rotary-phone-audio-guestbook)
   - [Background](#background)
-  - [Post-Event](#post-event)
-    - [Future Work (Action Items)](#future-work-action-items)
+  - [Post-Event Reflection](#post-event-reflection)
+  - [Future Enhancements](#future-enhancements)
+  - [Quick-Start](#quick-start)
   - [Materials](#materials)
   - [Hardware](#hardware)
     - [Wiring](#wiring)
       - [Hook](#hook)
       - [Phone Cord](#phone-cord)
-    - [Microphone Replacement (Optional)](#microphone-replacement-optional)
+    - [Optional: Microphone Replacement](#optional-microphone-replacement)
   - [Software](#software)
     - [Dev Environment](#dev-environment)
     - [Installation](#installation)
@@ -26,28 +31,33 @@
       - [Restart ALSA](#restart-alsa)
   - [Support](#support)
 
-This project transforms a rotary phone into a voice recorder for use at special events (i.e. wedding audio guestbook, etc.).
-
-![image](images/final_result_2.jpg)
-
 ## Background
 
-I was inspired by my own upcoming wedding to put together a DIY solution for an audio guestbook using a rotary phone. Most online rentals were charging $600 for an experience that didn't even offer the ability to add a custom voice mail and took about 4-6 weeks of turn around time to process the audio after the event. I tried to use as many parts that I had laying around to keep costs down. It worked out quite well and we were able to gather some very special voice messages.
+Inspired by my own upcoming wedding, I created a DIY solution for an audio guestbook using a rotary phone. With most online rentals charging exorbitant fees without offering custom voicemail options, I sought a more affordable and customizable solution. Here, I've detailed a guide on creating your own audio guestbook. If you have questions, don't hesitate to reach out.
 
-Below you will find a parts list and detailed setup guide. Please feel free to reach out to me with any questions.
+## Post-Event Reflection
 
-## Post-Event
+The real event provided insights into areas of improvement for the setup. For instance, introducing a recording time limit became essential after some younger attendees left lengthy messages, draining the battery. Depending on the situation, you might also consider connecting the setup directly to a 5V power supply.
 
-Since this was a trial by fire type of scenario there ended up being a few gotchas at the real event which I've since accounted for. Namely setting a time limit on the recording length as we had some youngsters leaving 5+ minute messages repeatedly and this ended up draining the battery. Alternatively, depending on your scenario, it might be preferable to attach directly to a 5V power supply.
+## Future Enhancements
 
-### Future Work (Action Items)
+In anticipation of my wedding, I had code in place to detect dialed numbers from the rotary encoder, allowing us to play special messages for specific guests based on their dialed combination. However, this required users to dial zero before leaving a voice message, introducing an extra step. We opted for simplicity, but if you're interested in expanding on this, you're welcome to explore further. The details of this operation mode are described in [Mode 2](#operation-mode-2-audioguestbookwithrotarydialer)
 
-A few weeks before the wedding I had the code registering dialed numbers from the rotary encoder with the goal of playing back special messages for certain guests who dialed a certain combination (i.e. dial an area code to hear a special message to my old roomates). The details of this operation mode are described in [Mode 2](#operation-mode-2-audioguestbookwithrotarydialer) below. In order to activate this mode I had to wait for input when the phone was off the hook. This required an extra step of dialing zero before leaving a normal voice message. In the end we decided to keep it simple and I've thus migrated this code to the dev branch along with the code to run through post-processing the audio in a separate process.
-If anyone is interested in expanding this please feel free.
+Additionally, threading the audio playback would be beneficial, allowing for a watchdog service to terminate the thread upon a hook callback. This would stop the message playback when a user hangs up.
 
-I would also like to thread the audio playback so I can have a monitor/watchdog service terminate the thread upon hook callback so that the message doesn't continue playing once the user hangs up.
+## Quick-Start
+
+To get started:
+
+```bash
+chmod +x installer.sh
+./installer.sh
+```
 
 ## Materials
+
+<details>
+  <summary>Parts List</summary>
 
 | Part                                                                                                                                                                                                                                                                                                                                      | Notes                                                                                                                                                                                                 | Quantity | Cost         |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------ |
@@ -65,6 +75,8 @@ I would also like to thread the audio playback so I can have a monitor/watchdog 
 | [LiPo Charger](https://www.adafruit.com/product/1904)                                                                                                                                                                                                                                                                                     | Optional: for re-charging the LiPo.                                                                                                                                                                   | 1        | $6.95        |
 | ---                                                                                                                                                                                                                                                                                                                                       | **--- If replacing the built-it microphone ---**                                                                                                                                                      | ---      | ---          |
 | [LavMic](https://www.amazon.com/dp/B01N6P80OQ?ref=nb_sb_ss_w_as-reorder-t1_ypp_rep_k3_1_9&amp=&crid=15WZEWMZ17EM9&amp=&sprefix=saramonic)                                                                                                                                                                                                 | Optional: if you'd like to replace the carbon microphone. This is an omnidirectional lavalier mic and outputs via a 3.5mm TRS                                                                         | 1        | $24.95       |
+
+</details>
 
 ## Hardware
 
@@ -90,7 +102,7 @@ To accommodate either type, you'll need to update the `config.yaml` with the app
 
   ![image](images/pi_block_terminal_wiring.jpg)
 
-- _Note: the green wire was used for the experimental rotary encoder feature identified in the [future work](#future-work-action-items) section._
+- _Note: the green wire was used for the experimental rotary encoder feature identified in the [future work](#future-enhancements) section._
 
 | Rotary Phone Block Terminal         | Top-down view                                |
 | ----------------------------------- | -------------------------------------------- |
@@ -109,9 +121,11 @@ To accommodate either type, you'll need to update the `config.yaml` with the app
   - [Here's](https://superuser.com/questions/53957/what-do-alsa-devices-like-hw0-0-mean-how-do-i-figure-out-which-to-use) a good reference to device selection.
   - You can also check [this](https://stackoverflow.com/questions/32838279/getting-list-of-audio-input-devices-in-python) from Python.
 
-### Microphone Replacement (Optional)
+### Optional: Microphone Replacement
 
-I found the sound quality of the built-in [carbon microphone](https://en.wikipedia.org/wiki/Carbon_microphone) on the rotary phone to be quite lacking in terms of amplitude, dynamic range and overall vocal quality. I tried boosting the gain from the digital (ALSA driver) side but this introduced an incredible amount of noise as expected. I then approached this from the analog domain and tried alternative circuitry to boost the sound quality based off this [carbon-to-dynamic converter](https://www.circuits-diy.com/mic-converter-circuit/).
+For improved sound quality, consider replacing the built-in [carbon microphone](https://en.wikipedia.org/wiki/Carbon_microphone).
+
+I found the sound quality of the built-in mic on the rotary phone to be quite lacking in terms of amplitude, dynamic range and overall vocal quality. I tried boosting the gain from the digital (ALSA driver) side but this introduced an incredible amount of noise as expected. I then approached this from the analog domain and tried alternative circuitry to boost the sound quality based off this [carbon-to-dynamic converter](https://www.circuits-diy.com/mic-converter-circuit/).
 
 Might be worth a further investigation in the future since it retains the integrity of the original rotary phone.
 
@@ -140,40 +154,41 @@ To replace:
 
 - rpi image: [Rasbian](https://www.raspberrypi.com/documentation/computers/getting-started.html) w/ SSH enabled
 - rpi on same network as development machine
-- Desktop IDE: vscode w/ [SSH FS extension](https://marketplace.visualstudio.com/items?itemName=Kelvin.vscode-sshfs)
+- _Optional: vscode w/ [SSH FS extension](https://marketplace.visualstudio.com/items?itemName=Kelvin.vscode-sshfs)_
 
 [Here's](https://jayproulx.medium.com/headless-raspberry-pi-zero-w-setup-with-ssh-and-wi-fi-8ddd8c4d2742) a great guide to get the rpi setup headless w/ SSH & WiFi dialed in.
 
 ### Installation
 
-After cloning the repository, there's an installer script available to ease the setup process. This script takes care of several tasks:
+- On the networked rpi - clone the repository:
 
-1. Install required dependencies.
-2. Replace placeholders in the service file to adapt to your project directory.
-3. Move the modified service file to the systemd directory.
-4. Create necessary directories (recordings and sounds).
-5. Grant execution permissions to the Python scripts.
-6. Reload systemd, enable, and start the service.
+```bash
+git clone git@github.com:nickpourazima/rotary-phone-audio-guestbook.git
+cd rotary-phone-audio-guestbook
+```
 
-To run the installer, navigate to the project directory and execute:
+- Next, use the installer script for a hassle-free setup.:
 
 ```bash
 chmod +x installer.sh
 ./installer.sh
 ```
 
+- Note, this script takes care of several tasks:
+
+  1. Install required dependencies.
+  2. Populate config.yaml based on user input
+  3. Replace placeholders in the service file to adapt to your project directory.
+  4. Move the modified service file to the systemd directory.
+  5. Create necessary directories (recordings and sounds).
+  6. Grant execution permissions to the Python scripts.
+  7. Reload systemd, enable, and start the service.
+
 ### [audioGuestBook systemctl service](audioGuestBook.service)
 
-The provided service ensures the Python script starts on boot. The installer script will place this service file in the `/etc/systemd/system`` directory and modify paths according to your project directory.
+This service ensures smooth operation without manual intervention every time your Raspberry Pi boots up. The installer script will place this service file in the `/etc/systemd/system` directory and modify paths according to your project directory.
 
-To manually control the service:
-
-```sh
-sudo systemctl enable audioGuestBook.service
-sudo systemctl start audioGuestBook.service
-```
-
-This service ensures smooth operation without manual intervention every time your Raspberry Pi boots up.
+Manual control of the service is possible as it operates as any other [`.service` entity](https://www.freedesktop.org/software/systemd/man/systemd.service.html)
 
 ### [Config](config.yaml)
 
@@ -197,9 +212,10 @@ This service ensures smooth operation without manual intervention every time you
 - On hook (depressed)
   - Nothing happens
 - Off hook (released)
-  - Plays back your own welcome message located in `/sounds/voicemail.wav` followed by the beep indicating ready to record.
+  - Plays back your own added welcome message located in `/sounds/voicemail.wav` followed by the [beep](/sounds/beep.wav) indicating the start of recording.
   - Begins recording the guests voice message.
   - Guest hangs up, recording is stopped and stored to the `/recordings/` directory.
+  - If the guest exceeds the **recording_limit** specified in the [config.yaml](/config.yaml), play the warning [time_exceeded.wav](/sounds/time_exceeded.wav) sound and stop recording.
 
 ### Operation Mode 2: [audioGuestBookwithRotaryDialer](./todo/audioGuestBookwithRotaryDialer.py)
 
