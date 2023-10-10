@@ -267,4 +267,4 @@ sudo /etc/init.d/alsa-utils restart
 ## Support
 
 If this code helped you or if you have some feedback, I'd be thrilled to [hear about it](mailto:dillpicholas@duck.com)!
-Feel like saying thanks? You can [buy me a coffee](https://www.buymeacoffee.com/dillpicholas) ☕.
+Feel like saying thanks? You can [buy me a coffee](https://ko-fi.com/dillpicholas)☕.
