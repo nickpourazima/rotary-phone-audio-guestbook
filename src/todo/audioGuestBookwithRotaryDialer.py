@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-import audioInterface
+import src.audioInterface as audioInterface
 import os
 import yaml
 import sys

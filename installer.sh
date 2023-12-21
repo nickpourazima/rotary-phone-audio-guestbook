@@ -121,7 +121,6 @@ rotary_gpio: 23
 rotary_hold_repeat: true
 rotary_hold_time: 0.25
 sample_rate: $sample_rate
-source_file: audioGuestBook.py
 format: $format
 hook_type: $hook_type
 EOF
@@ -145,7 +144,7 @@ if ! sudo mkdir -p "$DIR/recordings"; then
 fi
 
 # Set execution permissions for the main script
-if ! sudo chmod +x "$DIR/audioGuestBook.py"; then
+if ! sudo chmod +x "$DIR/src/audioGuestBook.py"; then
     echo "Failed to set script permissions."
     exit 1
 fi
