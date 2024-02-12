@@ -9,10 +9,63 @@ if ! sudo apt-get install -y python3-pip python3-gpiozero; then
 fi
 
 # Use --user flag for pip installations
-if ! pip3 install --user pydub pyaudio PyYAML; then
+if ! pip3 install --user pydub pyaudio PyYAML sounddevice; then
     echo "Failed to install Python packages."
     exit 1
 fi
+
+# Backup and modify PulseAudio configuration
+echo "Backing up and modifying PulseAudio configuration..."
+sudo cp /etc/pulse/default.pa /etc/pulse/default.pa.backup
+echo "default-fragments = 5" | sudo tee -a /etc/pulse/default.pa
+echo "default-fragment-size-msec = 2" | sudo tee -a /etc/pulse/default.pa
+
+# Restart PulseAudio
+pulseaudio -k
+pulseaudio --start
+
+# Display available sound cards and devices
+echo "Available sound cards and devices:"
+aplay -l
+
+# Prompt user for ALSA configuration values
+echo "Configuring ALSA..."
+read -p "Enter the card number for the default playback card (e.g., 0, 1): " playback_card
+read -p "Enter the card number for the default capture card (e.g., 0, 1): " capture_card
+
+# Use a consolidated prompt for sample rate to avoid duplication
+read -p "Enter the default sample rate (e.g., 44100): " sample_rate
+while ! [[ "$sample_rate" =~ ^[89][0-9]{3}$|^[1-9][0-9]{4}$|^[1][0-8][0-9]{4}$|192000$ ]]; do
+    echo "Invalid sample rate. Please enter a value between 8000 and 192000."
+    read -p "Enter the default sample rate (e.g., 44100): " sample_rate
+done
+
+read -p "Enter the bit depth (16, 24, 32): " bit_depth
+while ! [[ "$bit_depth" =~ ^(16|24|32)$ ]]; do
+    echo "Invalid bit depth. Please choose from 16, 24, or 32."
+    read -p "Enter the bit depth (16, 24, 32): " bit_depth
+done
+
+# Write ALSA configuration to /etc/asound.conf
+sudo tee /etc/asound.conf > /dev/null <<EOF
+defaults.pcm.rate_converter "samplerate"
+defaults.pcm.dmix.rate $sample_rate
+defaults.pcm.dmix.format S$bit_depth
+defaults.ctl.card $playback_card
+defaults.pcm.card $playback_card
+defaults.pcm.device 0
+defaults.pcm.subdevice -1
+defaults.pcm.nonblock 1
+defaults.pcm.compat 0
+pcm.!default {
+    type hw
+    card $playback_card
+}
+ctl.!default {
+    type hw
+    card $capture_card
+}
+EOF
 
 # Get the directory of the currently executing script
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

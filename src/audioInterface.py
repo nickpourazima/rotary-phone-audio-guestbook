@@ -3,7 +3,6 @@
 import logging
 import time
 import wave
-from typing import List
 
 import pyaudio
 from pydub import AudioSegment
@@ -138,7 +137,7 @@ class AudioInterface:
             start = time.time()
             while self.off_hook_condition():
                 if time.time() - start < self.recording_limit:
-                    data = self.stream.read(self.chunk, exception_on_overflow=True)
+                    data = self.stream.read(self.chunk, exception_on_overflow=False)
                     self.frames.append(data)
                 else:
                     # Notify the user that their recording time is up
