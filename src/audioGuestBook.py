@@ -11,7 +11,7 @@ import yaml
 from gpiozero import Button
 from pydub import AudioSegment, playback
 
-import src.audioInterface as audioInterface
+import audioInterface as audioInterface
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

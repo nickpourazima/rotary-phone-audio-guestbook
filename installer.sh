@@ -1,39 +1,47 @@
 #!/bin/bash
 
-# Dependency installation
-echo "Installing dependencies..."
-sudo apt-get update
-if ! sudo apt-get install -y python3-pip python3-gpiozero; then
-    echo "Failed to install system packages."
-    exit 1
-fi
+# Rotary Phone Audio Guestbook Installer
 
-# Use --user flag for pip installations
-if ! pip3 install --user pydub pyaudio PyYAML sounddevice; then
-    echo "Failed to install Python packages."
-    exit 1
-fi
+echo "Starting the installation process..."
 
-# Backup and modify PulseAudio configuration
-echo "Backing up and modifying PulseAudio configuration..."
+# Update and install system dependencies
+echo "Installing additional dependencies..."
+sudo apt-get install -y python3-pip python3-venv python3-gpiozero ffmpeg || {
+    echo "Failed to install required system packages."
+    exit 1
+}
+
+# Set up Python virtual environment for project dependencies
+echo "Setting up Python virtual environment..."
+python3 -m venv ~/rotary-phone-venv || {
+    echo "Failed to create Python virtual environment."
+    exit 1
+}
+source ~/rotary-phone-venv/bin/activate
+
+# Install Python dependencies in the virtual environment
+pip install pydub pyaudio PyYAML sounddevice || {
+    echo "Failed to install Python dependencies."
+    exit 1
+}
+
+# Modify PulseAudio configuration for improved audio handling
+echo "Configuring PulseAudio..."
 sudo cp /etc/pulse/default.pa /etc/pulse/default.pa.backup
-echo "default-fragments = 5" | sudo tee -a /etc/pulse/default.pa
-echo "default-fragment-size-msec = 2" | sudo tee -a /etc/pulse/default.pa
+echo -e "default-fragments = 5\ndefault-fragment-size-msec = 2" | sudo tee -a /etc/pulse/default.pa
 
-# Restart PulseAudio
+# Restart PulseAudio to apply changes
 pulseaudio -k
 pulseaudio --start
 
 # Display available sound cards and devices
-echo "Available sound cards and devices:"
+echo "Listing available sound cards and devices:"
 aplay -l
 
 # Prompt user for ALSA configuration values
 echo "Configuring ALSA..."
 read -p "Enter the card number for the default playback card (e.g., 0, 1): " playback_card
 read -p "Enter the card number for the default capture card (e.g., 0, 1): " capture_card
-
-# Use a consolidated prompt for sample rate to avoid duplication
 read -p "Enter the default sample rate (e.g., 44100): " sample_rate
 while ! [[ "$sample_rate" =~ ^[89][0-9]{3}$|^[1-9][0-9]{4}$|^[1][0-8][0-9]{4}$|192000$ ]]; do
     echo "Invalid sample rate. Please enter a value between 8000 and 192000."
@@ -46,8 +54,10 @@ while ! [[ "$bit_depth" =~ ^(16|24|32)$ ]]; do
     read -p "Enter the bit depth (16, 24, 32): " bit_depth
 done
 
-# Write ALSA configuration to /etc/asound.conf
-sudo tee /etc/asound.conf > /dev/null <<EOF
+# Write ALSA configuration
+echo "Applying ALSA configuration..."
+sudo tee /etc/asound.conf >/dev/null <<EOF
+# Custom ALSA configuration for Rotary Phone Audio Guestbook
 defaults.pcm.rate_converter "samplerate"
 defaults.pcm.dmix.rate $sample_rate
 defaults.pcm.dmix.format S$bit_depth
@@ -66,6 +76,13 @@ ctl.!default {
     card $capture_card
 }
 EOF
+
+# Test recording and playback functionality
+echo "Testing recording and playback..."
+arecord -D hw:$capture_card,0 -d 5 -f cd test-mic.wav && aplay test-mic.wav || {
+    echo "Test failed. Check your microphone and speaker setup."
+    exit 1
+}
 
 # Get the directory of the currently executing script
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
