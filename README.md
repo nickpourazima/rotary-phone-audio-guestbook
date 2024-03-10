@@ -61,8 +61,18 @@ _Note: This is a crucial first step before using the software._
 
 With your hardware ready, download the custom Raspberry Pi image provided, which has all necessary software pre-installed and pre-configured.
 
-- Visit [download link] for the latest custom image.
-- **Flash the Image to an SD Card**: Use a tool like the Raspberry Pi Imager or BalenaEtcher to flash the custom image onto your SD card.
+- Download and set up [git lfs](https://git-lfs.com/)
+- Clone this repo `git clone git@github.com:nickpourazima/rotary-phone-audio-guestbook.git`
+- **Flash the Image to an SD Card**: Use a tool like the Raspberry Pi Imager or BalenaEtcher to flash the custom image onto your SD card:
+  - ![image](images/rpi_imager_custom.png)
+  - Customize the config to specify the following username/password:
+
+  ```bash
+    username: admin
+    password: password
+  ```
+
+  - and set up your wifi network accordingly
 - **Insert and Boot**: Place the SD card into your Raspberry Pi and power it on to boot into the Rotary Phone Audio Guestbook.
 
 ### Configuration and Customization
