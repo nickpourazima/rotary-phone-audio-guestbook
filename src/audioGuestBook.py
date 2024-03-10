@@ -44,6 +44,7 @@ class AudioGuestBook:
             recording_limit=self.config["recording_limit"],
             sample_rate=self.config["sample_rate"],
             channels=self.config["channels"],
+            mixer_control_name=self.config["mixer_control_name"],
         )
         self.setup_hook()
 
@@ -76,12 +77,21 @@ class AudioGuestBook:
         Handles the off-hook event to start playback and recording.
         """
         logger.info("Phone off hook, ready to begin!")
-        self.audio_interface.play_audio("voicemail.wav")
-        self.audio_interface.play_audio("beep.wav")
+        logger.info("Playing voicemail...")
+        self.audio_interface.play_audio(
+            self.config["greeting"],
+            self.config["greeting_volume"],
+            self.config["greeting_start_delay"],
+        )
+        logger.info("Playing beep...")
+        self.audio_interface.play_audio(
+            self.config["beep"],
+            self.config["beep_volume"],
+            self.config["beep_start_delay"],
+        )
+
         output_file = str(
-            Path(__file__).parent
-            / "../recordings"
-            / f"{datetime.now().isoformat()}.wav"
+            Path(self.config["recordings_path"]) / f"{datetime.now().isoformat()}.wav"
         )
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")

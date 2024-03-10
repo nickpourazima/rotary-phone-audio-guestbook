@@ -31,6 +31,7 @@ class AudioInterface:
         recording_limit,
         sample_rate=44100,
         channels=1,
+        mixer_control_name="Speaker",
     ):
         """
         Initializes the audio interface with specified configuration.
@@ -50,23 +51,60 @@ class AudioInterface:
         self.sample_rate = sample_rate
         self.channels = channels
         self.recording_process = None
+        self.mixer_control_name = mixer_control_name
 
-    def play_audio(self, filename):
+    def set_volume(self, volume_percentage):
         """
-        Plays an audio file using the ALSA `aplay` utility.
+        Sets the system volume.
 
         Args:
-            filename (str): Name of the audio file to play, located in the `sounds` directory.
+            volume_percentage (float): Volume level as a percentage (0-1).
         """
-        sound_path = Path(__file__).parent / "../sounds" / filename
-        if not sound_path.exists():
-            logger.error(f"Audio file {filename} not found at {sound_path}.")
+        volume = max(
+            0, min(int(volume_percentage * 100), 100)
+        )  # Ensure volume is between 0 and 100
+        try:
+            subprocess.run(
+                ["amixer", "set", self.mixer_control_name, f"{volume}%"], check=True
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error setting volume: {e}")
+
+    def play_audio(self, input_file, volume=1, start_delay_sec=0):
+        """
+        Plays an audio file using `aplay` after setting the volume with `amixer`.
+        """
+        if not Path(input_file).exists():
+            logger.error(f"Audio file {input_file} not found.")
             return
 
+        self.set_volume(volume)
+
+        # If a start delay is needed, play the silent audio file
+        if start_delay_sec > 0:
+            subprocess.run(
+                [
+                    "aplay",
+                    "-r",
+                    str(self.sample_rate),
+                    "-c",
+                    str(self.channels),
+                    "-d",
+                    str(start_delay_sec),
+                    "-f",
+                    str(self.format),
+                    "/dev/zero",
+                ],
+                check=True,
+            )
+
+        # Play the actual audio file
         try:
-            subprocess.run(["aplay", str(sound_path)], check=True)
+            subprocess.run(
+                ["aplay", "-D", str(self.alsa_hw_mapping), str(input_file)], check=True
+            )
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error playing {filename}: {e}")
+            logger.error(f"Error playing {input_file}: {e}")
 
     def start_recording(self, output_file):
         """
