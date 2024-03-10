@@ -6,133 +6,103 @@ from datetime import datetime
 from pathlib import Path
 from signal import pause
 
-import pyaudio
 import yaml
 from gpiozero import Button
-from pydub import AudioSegment, playback
 
-import audioInterface as audioInterface
+from audioInterface import AudioInterface
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).parent
-CONFIG_PATH = BASE_DIR / "config.yaml"
-FORMATS = {
-    "INT16": pyaudio.paInt16,
-    "INT32": pyaudio.paInt32,
-    "FLOAT32": pyaudio.paFloat32,
-}
 
-
-def load_config():
+class AudioGuestBook:
     """
-    Loads the configuration from a YAML file.
+    Manages the rotary phone audio guest book application.
 
-    Returns:
-        dict: Configuration dictionary.
+    This class initializes the application, handles phone hook events, and
+    coordinates audio playback and recording based on the phone's hook status.
 
-    Raises:
-        SystemExit: If the configuration file is not found.
+    Attributes:
+        config_path (str): Path to the application configuration file.
+        config (dict): Configuration parameters loaded from the YAML file.
+        audio_interface (AudioInterface): Interface for audio playback and recording.
     """
-    try:
-        with CONFIG_PATH.open() as f:
-            return yaml.safe_load(f)
-    except FileNotFoundError as e:
-        logger.error(
-            f"Could not find {CONFIG_PATH}. FileNotFoundError: {e}. Check config location and retry."
+
+    def __init__(self, config_path):
+        """
+        Initializes the audio guest book application with specified configuration.
+
+        Args:
+            config_path (str): Path to the configuration YAML file.
+        """
+        self.config_path = config_path
+        self.config = self.load_config()
+        self.audio_interface = AudioInterface(
+            alsa_hw_mapping=self.config["alsa_hw_mapping"],
+            format=self.config["format"],
+            file_type=self.config["file_type"],
+            recording_limit=self.config["recording_limit"],
+            sample_rate=self.config["sample_rate"],
+            channels=self.config["channels"],
         )
-        sys.exit(1)
+        self.setup_hook()
 
+    def load_config(self):
+        """
+        Loads the application configuration from a YAML file.
 
-def play_audio(filename, reduction=0):
-    """
-    Plays an audio file with the option to reduce its volume.
+        Raises:
+            FileNotFoundError: If the configuration file does not exist.
+        """
+        try:
+            with open(self.config_path, "r") as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError as e:
+            logger.error(f"Configuration file not found: {e}")
+            sys.exit(1)
 
-    Args:
-        filename (str): The name of the audio file to play.
-        reduction (int): The amount of volume reduction (default is 0).
-    """
-    try:
-        sound_path = BASE_DIR / "sounds" / filename
-        sound = AudioSegment.from_wav(sound_path) - reduction
-        playback.play(sound)
-    except Exception as e:
-        logger.error(f"Error playing {filename}. Error: {e}")
+    def setup_hook(self):
+        """
+        Sets up the phone hook switch with GPIO based on the configuration.
+        """
+        hook_gpio = self.config["hook_gpio"]
+        pull_up = self.config["hook_type"] == "NC"
+        self.hook = Button(hook_gpio, pull_up=pull_up)
+        self.hook.when_pressed = self.off_hook
+        self.hook.when_released = self.on_hook
 
+    def off_hook(self):
+        """
+        Handles the off-hook event to start playback and recording.
+        """
+        logger.info("Phone off hook, ready to begin!")
+        self.audio_interface.play_audio("voicemail.wav")
+        self.audio_interface.play_audio("beep.wav")
+        output_file = str(
+            Path(__file__).parent
+            / "../recordings"
+            / f"{datetime.now().isoformat()}.wav"
+        )
+        self.audio_interface.start_recording(output_file)
+        logger.info("Recording started...")
 
-def off_hook():
-    """
-    Handles the off-hook event.
+    def on_hook(self):
+        """
+        Handles the on-hook event to stop and save the recording.
+        """
+        logger.info("Phone on hook. Ending call and saving recording.")
+        self.audio_interface.stop_recording()
 
-    Initializes the audio interface, plays the voicemail and beep sounds,
-    and starts recording the audio.
-    """
-    global hook, config
-
-    logger.info("Phone off hook, ready to begin!")
-
-    audio_interface = audioInterface.AudioInterface(
-        hook=hook,
-        buffer_size=config["buffer_size"],
-        channels=config["channels"],
-        format=FORMATS.get(config["format"], pyaudio.paInt16),
-        sample_rate=config["sample_rate"],
-        recording_limit=config["recording_limit"],
-        dev_index=config["alsa_hw_mapping"],
-        hook_type=config["hook_type"],
-    )
-    # Explicitly initialize audio resources
-    audio_interface.init_audio()
-
-    # Playing pre-recorded messages before recording
-    logger.info("Playing voicemail message...")
-    play_audio("voicemail.wav", config["playback_reduction"])
-
-    logger.info("Playing beep...")
-    play_audio("beep.wav", config["beep_reduction"])
-
-    # Start recording
-    logger.info("Recording")
-    audio_interface.record()
-    audio_interface.stop()
-
-    output_file = str(BASE_DIR / "recordings" / f"{datetime.now().isoformat()}.wav")
-    audio_interface.close(output_file)
-    logger.info("Finished recording!")
-
-
-def on_hook():
-    """
-    Handles the on-hook event.
-
-    Logs a message indicating that the phone is on hook.
-    """
-    logger.info("Phone on hook.\nSleeping...")
-
-
-def main():
-    """
-    The main function of the script.
-
-    Initializes the system, loads configuration, and sets up hook events.
-    """
-    global config, hook
-    logger.info("Remember to monitor system resources during recording.")
-    config = load_config()
-
-    # Setting up the hook based on configuration
-    if config["hook_type"] == "NC":
-        hook = Button(config["hook_gpio"], pull_up=True)
-        hook.when_pressed = on_hook
-        hook.when_released = off_hook
-    else:  # Assuming NO if not NC
-        hook = Button(config["hook_gpio"], pull_up=False)
-        hook.when_pressed = off_hook
-        hook.when_released = on_hook
-    pause()
+    def run(self):
+        """
+        Starts the main event loop waiting for phone hook events.
+        """
+        logger.info("System ready. Lift the handset to start.")
+        pause()
 
 
 if __name__ == "__main__":
-    main()
+    CONFIG_PATH = Path(__file__).parent / "../config.yaml"
+    logger.info(f"Using configuration file: {CONFIG_PATH}")
+    guest_book = AudioGuestBook(CONFIG_PATH)
+    guest_book.run()

@@ -1,226 +1,112 @@
-#! /usr/bin/env python3
-
 import logging
-import time
-import wave
+import signal
+import subprocess
+from pathlib import Path
 
-import pyaudio
-
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class AudioInterface:
     """
-    A class to handle audio recording and playback functionalities.
+    Interface for handling audio playback and recording.
 
-    :param chunk: The size of each audio chunk to be read or written.
-    :type chunk: int
-    :param chans: Number of audio channels.
-    :type chans: int
-    :param format: The format of the audio, e.g., pyaudio.paInt16.
-    :type format: int
-    :param frames: List to store frame bytes of the recorded audio.
-    :type frames: List[bytes]
-    :param hook: GPIO Button object to detect on and off-hook events.
-    :type hook: Button object
-    :param samp_rate: The sample rate of the audio.
-    :type samp_rate: int
-    :param recording_limit: Maximum recording duration in seconds.
-    :type recording_limit: int
-    :param dev_index: Index of the audio device to use.
-    :type dev_index: int
-    :param hook_type: Type of the hook (NC - Normally Closed, NO - Normally Open).
-    :type hook_type: str
-    :param filter_low_freq: Lower frequency for band-pass filter.
-    :type filter_low_freq: int
-    :param filter_high_freq: Higher frequency for band-pass filter.
-    :type filter_high_freq: int
-    :param audio: PyAudio object for audio operations.
-    :type audio: PyAudio object
-    :param stream: Audio stream for recording or playback.
-    :type stream: Audio
+    This class provides methods to play audio files and manage audio recording processes,
+    supporting non-blocking recording to allow application control flow to continue.
 
+    Attributes:
+        alsa_hw_mapping (str): ALSA hardware device mapping for audio input/output.
+        recording_limit (int): Maximum recording duration in seconds.
+        format (str): Audio format for recording and playback.
+        file_type (str): File type for recorded audio.
+        sample_rate (int): Sampling rate for audio recording.
+        channels (int): Number of audio channels for recording.
+        recording_process (subprocess.Popen or None): Handle to the current recording process, if any.
     """
 
     def __init__(
         self,
-        hook,
-        buffer_size,
-        channels,
+        alsa_hw_mapping,
         format,
-        sample_rate,
+        file_type,
         recording_limit,
-        dev_index,
-        hook_type,
-        filter_low_freq=300,
-        filter_high_freq=10000,
-    ) -> None:
+        sample_rate=44100,
+        channels=1,
+    ):
         """
-        Initializes the audio interface with the specified configuration.
+        Initializes the audio interface with specified configuration.
 
         Args:
-            hook: GPIO Button object for hook detection.
-            buffer_size (int): Size of each audio buffer chunk.
-            channels (int): Number of audio channels.
-            format (int): Audio format (e.g., pyaudio.paInt16).
-            sample_rate (int): Audio sample rate.
-            recording_limit (int): Maximum recording time in seconds.
-            dev_index (int): Index of the audio device.
-            hook_type (str): Type of the hook (NC or NO).
-            filter_low_freq (int): Lower frequency for band-pass filter.
-            filter_high_freq (int): Higher frequency for band-pass filter.
+            alsa_hw_mapping (str): ALSA hardware device mapping.
+            format (str): Audio format (e.g., 'cd' for 16-bit 44100 Hz stereo).
+            file_type (str): Type of the file to record (e.g., 'wav').
+            recording_limit (int): Maximum duration for recording in seconds.
+            sample_rate (int, optional): Sampling rate in Hz. Defaults to 44100.
+            channels (int, optional): Number of audio channels. Defaults to 1.
         """
-        # Audio configuration
-        self.chunk = buffer_size
-        self.chans = channels
-        self.format = format
-        self.frames = []
-        self.hook = hook
-        self.samp_rate = sample_rate
+        self.alsa_hw_mapping = alsa_hw_mapping
         self.recording_limit = recording_limit
-        self.dev_index = dev_index
-        self.hook_type = hook_type
-        self.filter_low_freq = filter_low_freq
-        self.filter_high_freq = filter_high_freq
+        self.format = format
+        self.file_type = file_type
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.recording_process = None
 
-        # Audio resources
-        self.audio = None
-        self.stream = None
-        logger.info(
-            f"Initializing Audio Interface with sample rate: {sample_rate}, format: {format}"
-        )
-
-    def init_audio(self):
+    def play_audio(self, filename):
         """
-        Initializes (or reinitializes) the audio resources for recording.
-        Closes any existing stream and PyAudio instance before re-creating them.
-        """
-        # Closing existing stream if open
-        if self.stream is not None:
-            self.stream.stop_stream()
-            self.stream.close()
-            self.stream = None
-
-        # Terminating existing PyAudio instance if it exists
-        if self.audio is not None:
-            self.audio.terminate()
-
-        # Creating new PyAudio instance and resetting frame list
-        self.audio = pyaudio.PyAudio()
-        self.frames = []
-        logger.info("Audio resources initialized.")
-
-    def record(self):
-        """
-        Records audio until the off-hook condition is false or the recording limit is reached.
-
-        This method initializes the audio stream and reads audio chunks in a loop, appending them to the frame list.
-        If the recording time exceeds the set limit, a 'time exceeded' notification is played.
-        """
-        self.init_audio()
-        logger.info("Audio stream initialized for recording.")
-        self.stream = self.audio.open(
-            format=self.format,
-            rate=self.samp_rate,
-            channels=self.chans,
-            input_device_index=self.dev_index,
-            input=True,
-            frames_per_buffer=self.chunk,
-        )
-
-        # loop through stream and append audio chunks to frame array
-        try:
-            start = time.time()
-            while self.off_hook_condition():
-                if time.time() - start < self.recording_limit:
-                    data = self.stream.read(self.chunk, exception_on_overflow=False)
-                    self.frames.append(data)
-                else:
-                    # Notify the user that their recording time is up
-                    self.play("time_exceeded.wav")
-                    break
-        except KeyboardInterrupt:
-            logger.info("Done recording")
-        except Exception as e:
-            logger.error(f"Recording error: {e}")
-
-    def off_hook_condition(self):
-        """
-        Determines the off-hook condition based on the hook type.
-
-        Returns:
-            bool: True if the off-hook condition is met, False otherwise.
-        """
-        return (
-            not self.hook.is_pressed if self.hook_type == "NC" else self.hook.is_pressed
-        )
-
-    def play(self, file):
-        """
-        Plays an audio file.
-
-        This method initializes the audio resources and plays the specified audio file.
+        Plays an audio file using the ALSA `aplay` utility.
 
         Args:
-            file (str): The path to the audio file to be played.
-
-        Raises:
-            FileNotFoundError: If the specified audio file does not exist.
-            wave.Error: If there is an error processing the wave file.
+            filename (str): Name of the audio file to play, located in the `sounds` directory.
         """
+        sound_path = Path(__file__).parent / "../sounds" / filename
+        if not sound_path.exists():
+            logger.error(f"Audio file {filename} not found at {sound_path}.")
+            return
+
         try:
-            self.init_audio()
-            with wave.open(file, "rb") as wf:
-                self.stream = self.audio.open(
-                    format=self.audio.get_format_from_width(wf.getsampwidth()),
-                    channels=wf.getnchannels(),
-                    rate=wf.getframerate(),
-                    output=True,
-                )
-                data = wf.readframes(self.chunk)
-                while data:
-                    self.stream.write(data)
-                    data = wf.readframes(self.chunk)
-        except FileNotFoundError:
-            logger.error(f"File not found: {file}")
-        except wave.Error as e:
-            logger.error(f"Wave error: {e}")
-        finally:
-            if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
+            subprocess.run(["aplay", str(sound_path)], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error playing {filename}: {e}")
 
-    def stop(self):
+    def start_recording(self, output_file):
         """
-        Stops the audio stream and terminates the PyAudio session.
-
-        This method is used to cleanly stop audio playback or recording and release resources.
-        """
-        if self.stream:
-            logger.info("Stopping audio stream.")
-            self.stream.stop_stream()
-            self.stream.close()
-        if self.audio:
-            logger.info("Terminating PyAudio session.")
-            self.audio.terminate()
-
-    def close(self, output_file):
-        """
-        Closes the audio interface and saves the recorded frames to a file.
+        Starts recording audio to the specified file in a non-blocking manner.
 
         Args:
-            output_file (str): The path to the output file where the recording will be saved.
-
-        Raises:
-            OSError: If there is an error writing the audio data to the file.
+            output_file (str): Path to the output file where the audio will be saved.
         """
-        try:
-            with wave.open(output_file, "wb") as wavefile:
-                wavefile.setnchannels(self.chans)
-                wavefile.setsampwidth(self.audio.get_sample_size(self.format))
-                wavefile.setframerate(self.samp_rate)
-                wavefile.writeframes(b"".join(self.frames))
-            logger.info(f"Recording saved to {output_file}")
-        except OSError as e:
-            logger.error(f"Error writing to file {output_file}. Error: {e}")
+        command = [
+            "arecord",
+            "-D",
+            str(self.alsa_hw_mapping),
+            "-f",
+            str(self.format),
+            "-t",
+            str(self.file_type),
+            "-d",
+            str(self.recording_limit),
+            "-r",
+            str(self.sample_rate),
+            "-c",
+            str(self.channels),
+            output_file,
+        ]
+        self.recording_process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_IGN),
+        )
+
+    def stop_recording(self):
+        """
+        Stops the ongoing audio recording process.
+        """
+        if self.recording_process:
+            self.recording_process.terminate()
+            try:
+                self.recording_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                # Force kill if not exited
+                self.recording_process.kill()
+            logger.info("Recording stopped.")

@@ -6,53 +6,24 @@ This project transforms a rotary phone into a voice recorder for use at special 
 
 - [Rotary Phone Audio Guestbook](#rotary-phone-audio-guestbook)
   - [Background](#background)
-  - [Post-Event Reflection](#post-event-reflection)
-  - [Future Enhancements](#future-enhancements)
-  - [Quick-Start](#quick-start)
   - [Materials](#materials)
+  - [Setup](#setup)
+    - [Prepare Your Rotary Phone](#prepare-your-rotary-phone)
+    - [Download and Install the Custom Image](#download-and-install-the-custom-image)
+    - [Configuration and Customization](#configuration-and-customization)
   - [Hardware](#hardware)
     - [Wiring](#wiring)
       - [Hook](#hook)
       - [Phone Cord](#phone-cord)
     - [Optional: Microphone Replacement](#optional-microphone-replacement)
   - [Software](#software)
-    - [Dev Environment](#dev-environment)
-    - [Installation](#installation)
-    - [audioGuestBook systemctl service](#audioguestbook-systemctl-service)
-    - [Config](#config)
-    - [AudioInterface Class](#audiointerface-class)
-    - [Operation Mode 1: audioGuestBook](#operation-mode-1-audioguestbook)
-    - [Operation Mode 2: audioGuestBookwithRotaryDialer](#operation-mode-2-audioguestbookwithrotarydialer)
-  - [Troubleshooting](#troubleshooting)
-    - [Configuring Hook Type](#configuring-hook-type)
-    - [Verify default audio interface](#verify-default-audio-interface)
-      - [Check the Sound Card Configuration](#check-the-sound-card-configuration)
-      - [Set the Default Sound Card](#set-the-default-sound-card)
-      - [Restart ALSA](#restart-alsa)
+    - [audioInterface](#audiointerface)
+    - [audioGuestBook](#audioguestbook)
   - [Support](#support)
 
 ## Background
 
 Inspired by my own upcoming wedding, I created a DIY solution for an audio guestbook using a rotary phone. With most online rentals charging exorbitant fees without offering custom voicemail options, I sought a more affordable and customizable solution. Here, I've detailed a guide on creating your own audio guestbook. If you have questions, don't hesitate to reach out.
-
-## Post-Event Reflection
-
-The real event provided insights into areas of improvement for the setup. For instance, introducing a recording time limit became essential after some younger attendees left lengthy messages, draining the battery. Depending on the situation, you might also consider connecting the setup directly to a 5V power supply.
-
-## Future Enhancements
-
-In anticipation of my wedding, I had code in place to detect dialed numbers from the rotary encoder, allowing us to play special messages for specific guests based on their dialed combination. However, this required users to dial zero before leaving a voice message, introducing an extra step. We opted for simplicity, but if you're interested in expanding on this, you're welcome to explore further. The details of this operation mode are described in [Mode 2](#operation-mode-2-audioguestbookwithrotarydialer)
-
-Additionally, threading the audio playback would be beneficial, allowing for a watchdog service to terminate the thread upon a hook callback. This would stop the message playback when a user hangs up.
-
-## Quick-Start
-
-After cloning the repo on the rpi:
-
-```bash
-chmod +x installer.sh
-./installer.sh
-```
 
 ## Materials
 
@@ -77,6 +48,68 @@ chmod +x installer.sh
 | [LavMic](https://www.amazon.com/dp/B01N6P80OQ?ref=nb_sb_ss_w_as-reorder-t1_ypp_rep_k3_1_9&amp=&crid=15WZEWMZ17EM9&amp=&sprefix=saramonic)                                                                                                                                                                                                 | Optional: if you'd like to replace the carbon microphone. This is an omnidirectional lavalier mic and outputs via a 3.5mm TRS                                                                         | 1        | $24.95       |
 
 </details>
+
+## Setup
+
+### Prepare Your Rotary Phone
+
+- Follow the [Hardware](#hardware) section for detailed instructions on wiring your rotary phone to the Raspberry Pi.
+
+_Note: This is a crucial first step before using the software._
+
+### Download and Install the Custom Image
+
+With your hardware ready, download the custom Raspberry Pi image provided, which has all necessary software pre-installed and pre-configured.
+
+- Visit [download link] for the latest custom image.
+- **Flash the Image to an SD Card**: Use a tool like the Raspberry Pi Imager or BalenaEtcher to flash the custom image onto your SD card.
+- **Insert and Boot**: Place the SD card into your Raspberry Pi and power it on to boot into the Rotary Phone Audio Guestbook.
+
+### Configuration and Customization
+
+Once your system is up and running, you will want to make adjustments to suit your specific setup, especially if your hardware differs or you have personal preferences for how the guestbook operates.
+
+- [ ] Replace the voicemail.wav with your own custom recording
+- [ ] Check your ALSA HW mapping
+
+  Depending on your audio interface's configuration, you may need to adjust the ALSA settings further. If after running `aplay -l` you find that the ALSA hardware mapping differs from what is expected or if you're experiencing audio issues, consider modifying `.asoundrc` to ensure your device correctly identifies and uses your audio interface. For example, if your USB audio interface is listed as card 1, device 0, you might add or modify `.asoundrc` to include:
+
+  ```bash
+  pcm.!default {
+      type hw
+      card 1
+  }
+
+  ctl.!default {
+      type hw
+      card 1
+  }
+  ```
+
+- [ ] Adjust the `config.yaml`
+
+  This file allows you to customize your own set up (edit rpi GPIO pins, alsa mapping, etc), modify the yaml as necessary.
+
+  - `alsa_hw_mapping`: The ALSA hardware mapping for your audio interface. Use aplay --help for format guidance.
+  - `format`: Set the audio format (default is cd). Refer to aplay --help for options.
+  - `file_type`: The type of file to save recordings as (default is wav).
+  - `channels`: Number of audio channels (default is 2 for stereo).
+  - `hook_gpio`: The GPIO pin connected to the phone's hook switch.
+    - For GPIO mapping, refer to the wiring diagram specific to your rpi:
+    - ![image](images/rpi_GPIO.png)
+  - `hook_type`: Set to NC (Normally Closed) or NO (Normally Open), depending on your phone's hook switch hardware setup.
+  - `recording_limit`: The maximum length for a recording in seconds (default is 300).
+  - `sample_rate`: The sample rate for recordings (default is 44100 Hz).
+
+  _Note: Adjust these settings as needed based on your specific hardware setup and preferences._
+
+- [ ] Test audio playback/recording
+
+To ensure your settings are correctly applied, you can test audio playback and recording after making changes. For playback, you can use a sample WAV file and the `aplay` command. For recording, `arecord` can be used followed by `aplay` to play back the recorded audio.
+
+- [ ] Check [audioGuestBook systemctl service](audioGuestBook.service)
+
+This service ensures smooth operation without manual intervention every time your Raspberry Pi boots up. The service file is sym linked to the `/etc/systemd/system` directory. Manual control of the service is possible as it operates as any other [`.service` entity](https://www.freedesktop.org/software/systemd/man/systemd.service.html). You can quickly check the status with `journalctl -u audioGuestBook.service`
 
 ## Hardware
 
@@ -150,60 +183,12 @@ To replace:
 
 ## Software
 
-### Dev Environment
+### [audioInterface](audioInterface.py)
 
-- rpi image: [Rasbian](https://www.raspberrypi.com/documentation/computers/getting-started.html) w/ SSH enabled
-- rpi on same network as development machine
-- _Optional: vscode w/ [SSH FS extension](https://marketplace.visualstudio.com/items?itemName=Kelvin.vscode-sshfs)_
+- Utilizes ALSAs native aplay/arecord via subprocess calls.
+- Houses the main playback/record logic.
 
-[Here's](https://jayproulx.medium.com/headless-raspberry-pi-zero-w-setup-with-ssh-and-wi-fi-8ddd8c4d2742) a great guide to get the rpi setup headless w/ SSH & WiFi dialed in.
-
-### Installation
-
-- On the networked rpi - clone the repository:
-
-```bash
-git clone git@github.com:nickpourazima/rotary-phone-audio-guestbook.git
-cd rotary-phone-audio-guestbook
-```
-
-- Next, use the installer script for a hassle-free setup.:
-
-```bash
-chmod +x installer.sh
-./installer.sh
-```
-
-- Note, this script takes care of several tasks:
-
-  1. Install required dependencies.
-  2. Populate config.yaml based on user input
-  3. Replace placeholders in the service file to adapt to your project directory.
-  4. Move the modified service file to the systemd directory.
-  5. Create necessary directories (recordings and sounds).
-  6. Grant execution permissions to the Python scripts.
-  7. Reload systemd, enable, and start the service.
-
-### [audioGuestBook systemctl service](audioGuestBook.service)
-
-This service ensures smooth operation without manual intervention every time your Raspberry Pi boots up. The installer script will place this service file in the `/etc/systemd/system` directory and modify paths according to your project directory.
-
-Manual control of the service is possible as it operates as any other [`.service` entity](https://www.freedesktop.org/software/systemd/man/systemd.service.html)
-
-### [Config](config.yaml)
-
-- This file allows you to customize your own set up (edit rpi pins, audio reduction, alsa mapping, etc), modify the yaml as necessary.
-- Ensure the sample rate is supported by your audio interface (default = 44100 Hz (decimal not required))
-- For GPIO mapping, refer to the wiring diagram specific to your rpi:
-  ![image](images/rpi_GPIO.png)
-- **hook_type**: Define your hook switch type here. Set it to "NC" if your phone uses a Normally Closed hook switch or "NO" for Normally Open.
-
-### [AudioInterface Class](audioInterface.py)
-
-- Utilizes pydub and pyaudio extensively.
-- Houses the main playback/record logic and has future #TODO expansion for postprocessing the audio. Would like to test on an rpi4 to see if it can handle it better for real-time applications.
-
-### Operation Mode 1: [audioGuestBook](/audioGuestBook.py)
+### [audioGuestBook](/audioGuestBook.py)
 
 - This is the main operation mode of the device.
 - There are two callbacks in main which poll the gpio pins for the specified activity (hook depressed, hook released).
@@ -217,54 +202,7 @@ Manual control of the service is possible as it operates as any other [`.service
   - Guest hangs up, recording is stopped and stored to the `/recordings/` directory.
   - If the guest exceeds the **recording_limit** specified in the [config.yaml](/config.yaml), play the warning [time_exceeded.wav](/sounds/time_exceeded.wav) sound and stop recording.
 
-### Operation Mode 2: [audioGuestBookwithRotaryDialer](./todo/audioGuestBookwithRotaryDialer.py)
-
-**_Note_:** Untested - decided not to go this route for my own wedding
-
-- This mode is a special modification of the normal operation and requires a slightly different wiring connection since it accepts input from the rotary dialer.
-- The idea was to playback special messages when particular users dial a certain number combination (i.e. 909 would play back a message for certain guests who lived with the groom in that area code).
-- In this mode of operation the users will need to dial 0 on the rotary dialer in order to initiate the voicemail.
-- The rotary dialer is a bit more complex to set up, you need a pull up resistor connected between the F screw terminal and 5V on the rpi and the other end on GPIO 23. #TODO: Diagram
-
-## Troubleshooting
-
-### Configuring Hook Type
-
-If you find that the behaviors for hanging up and lifting the phone are reversed, it's likely that the `hook_type` in `config.yaml` is incorrectly set. Ensure that it matches your phone's hook switch type (NC or NO).
-
-### Verify default audio interface
-
-A few users had issues where audio I/O was defaulting to HDMI. To alleviate this, check the following:
-
-#### Check the Sound Card Configuration
-
-Verify the available sound devices using the following command:
-
-```bash
-aplay -l
-```
-
-_Ensure that your USB audio interface is listed and note the card and device numbers._
-
-#### Set the Default Sound Card
-
-If you want to route audio through your USB audio interface, you'll need to make it the default sound card.
-Edit the ALSA configuration file (usually located at `/etc/asound.conf` or `~/.asoundrc`) and add the following:
-
-```bash
-defaults.pcm.card X
-defaults.ctl.card X
-```
-
-_Replace X with the card number of your USB audio interface obtained from the previous step._
-
-#### Restart ALSA
-
-```bash
-sudo /etc/init.d/alsa-utils restart
-```
-
 ## Support
 
-If this code helped you or if you have some feedback, I'd be thrilled to [hear about it](mailto:dillpicholas@duck.com)!
+If this code helped you or if you have some feedback, I'd be happy to [hear about it](mailto:dillpicholas@duck.com)!
 Feel like saying thanks? You can [buy me a coffee](https://ko-fi.com/dillpicholas)☕.

@@ -1,3 +1,4 @@
 *.code*
 *.trunk*
 __pycache__
+sounds/voicemail.wav
