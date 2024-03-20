@@ -1,4 +1,5 @@
 alsa_hw_mapping: plughw:1,0
+mixer_control_name: Speaker # look at amixer scontrols for available controls
 format: cd # look at aplay --help for available formats
 file_type: wav
 channels: 2
@@ -6,3 +7,19 @@ hook_gpio: 22
 hook_type: NC # or 'NO' depending on your hardware configuration
 recording_limit: 300
 sample_rate: 44100
+
+# The beep sound is played when the user picks up the phone
+beep: /home/admin/rotary-phone-audio-guestbook/sounds/beep.wav
+beep_volume: 1
+beep_start_delay: 0
+
+# The greeting sound is played when the user picks up the phone
+greeting: /home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav
+greeting_volume: 1
+greeting_start_delay: 5
+
+# The time_exceeded sound is played when the user has been recording for too long
+time_exceeded: /home/admin/rotary-phone-audio-guestbook/sounds/time_exceeded.wav
+time_exceeded_volume: 1
+
+recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
