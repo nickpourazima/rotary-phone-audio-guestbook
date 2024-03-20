@@ -61,8 +61,8 @@ _Note: This is a crucial first step before using the software._
 
 With your hardware ready, download the custom Raspberry Pi image provided, which has all necessary software pre-installed and pre-configured.
 
-- Download and set up [git lfs](https://git-lfs.com/)
-- Clone this repo `git clone git@github.com:nickpourazima/rotary-phone-audio-guestbook.git`
+- Download the latest release: [v1.0.0](https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases/download/v1.0.0/rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img.gz)
+- Extract the .gz file, i.e.: `gunzip rpizero_rotary_phone_audio_guestbook_v<latest>_imagebackup.img.gz`
 - **Flash the Image to an SD Card**: Use a tool like the Raspberry Pi Imager or BalenaEtcher to flash the custom image onto your SD card:
   - ![image](images/rpi_imager_custom.png)
   - Customize the config to specify the following username/password:
