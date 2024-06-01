@@ -51,6 +51,7 @@ class AudioInterface:
         self.sample_rate = sample_rate
         self.channels = channels
         self.recording_process = None
+        self.playback_process = None
         self.mixer_control_name = mixer_control_name
 
     def set_volume(self, volume_percentage):
@@ -80,31 +81,55 @@ class AudioInterface:
 
         self.set_volume(volume)
 
-        # If a start delay is needed, play the silent audio file
+        # If a start delay is needed, generate and play a silence file
         if start_delay_sec > 0:
-            subprocess.run(
-                [
-                    "aplay",
-                    "-r",
-                    str(self.sample_rate),
-                    "-c",
-                    str(self.channels),
-                    "-d",
-                    str(start_delay_sec),
-                    "-f",
-                    str(self.format),
-                    "/dev/zero",
-                ],
-                check=True,
-            )
+            silence_file = "/tmp/silence.wav"
+            try:
+                subprocess.run(
+                    [
+                        "sox",
+                        "-n",
+                        "-r",
+                        str(self.sample_rate),
+                        "-c",
+                        str(self.channels),
+                        silence_file,
+                        "trim",
+                        "0.0",
+                        str(start_delay_sec),
+                    ],
+                    check=True,
+                )
+                subprocess.run(
+                    ["aplay", "-D", str(self.alsa_hw_mapping), silence_file], check=True
+                )
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Error generating or playing silence file: {e}")
 
         # Play the actual audio file
         try:
-            subprocess.run(
-                ["aplay", "-D", str(self.alsa_hw_mapping), str(input_file)], check=True
+            self.playback_process = subprocess.Popen(
+                ["aplay", "-D", str(self.alsa_hw_mapping), str(input_file)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
+            self.playback_process.wait()
         except subprocess.CalledProcessError as e:
             logger.error(f"Error playing {input_file}: {e}")
+
+    def stop_playback(self):
+        """
+        Stops the ongoing audio playback process.
+        """
+        if self.playback_process:
+            self.playback_process.terminate()
+            try:
+                self.playback_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                # Force kill if not exited
+                self.playback_process.kill()
+            logger.info("Playback stopped.")
+            self.playback_process = None
 
     def start_recording(self, output_file):
         """
