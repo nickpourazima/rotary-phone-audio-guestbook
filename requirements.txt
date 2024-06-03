@@ -1,6 +1,6 @@
 certifi==2024.2.2
-charset-normalizer==3.3.2
 chardet==4.0.0
+charset-normalizer==3.3.2
 colorzero==1.1
 distro==1.5.0
 gpiozero==1.6.2
@@ -17,8 +17,10 @@ requests==2.32.3
 RPi.GPIO==0.7.0
 simplejpeg==1.6.4
 six==1.16.0
+sox==1.5.0
 spidev==3.5
 ssh-import-id==5.10
 toml==0.10.1
+typing-extensions==4.12.1
 urllib3==2.2.1
 v4l2-python3==0.3.2

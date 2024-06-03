@@ -3,3 +3,4 @@
 __pycache__
 sounds/voicemail.wav
 .venv/
+notes.txt

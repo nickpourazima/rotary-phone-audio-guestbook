@@ -48,6 +48,7 @@ class AudioGuestBook:
             mixer_control_name=self.config["mixer_control_name"],
         )
         self.setup_hook()
+        self.continue_playback = False
 
     def load_config(self):
         """
@@ -79,10 +80,15 @@ class AudioGuestBook:
         """
         logger.info("Phone off hook, ready to begin!")
 
+        self.continue_playback = True  # Ensure playback can continue
         # Start the greeting playback in a separate thread
         self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
         self.greeting_thread.start()
 
+    def start_recording(self):
+        """
+        Starts the audio recording process and sets a timer for time exceeded event.
+        """
         output_file = str(
             Path(self.config["recordings_path"]) / f"{datetime.now().isoformat()}.wav"
         )
@@ -99,14 +105,16 @@ class AudioGuestBook:
         """
         Plays the greeting and beep sounds, checking for the on-hook event.
         """
+        # Play the greeting
+        self.audio_interface.continue_playback = self.continue_playback
         logger.info("Playing voicemail...")
         self.audio_interface.play_audio(
             self.config["greeting"],
             self.config["greeting_volume"],
             self.config["greeting_start_delay"],
         )
-
-        if not self.hook.is_pressed:
+        # Check if the phone is still off-hook before playing the beep
+        if self.continue_playback:
             logger.info("Playing beep...")
             self.audio_interface.play_audio(
                 self.config["beep"],
@@ -114,11 +122,16 @@ class AudioGuestBook:
                 self.config["beep_start_delay"],
             )
 
+        # Start recording after the beep
+        if self.continue_playback:
+            self.start_recording()
+
     def on_hook(self):
         """
         Handles the on-hook event to stop and save the recording.
         """
         logger.info("Phone on hook. Ending call and saving recording.")
+        self.continue_playback = False  # Stop playback
         self.audio_interface.stop_recording()
         if hasattr(self, "timer"):
             self.timer.cancel()

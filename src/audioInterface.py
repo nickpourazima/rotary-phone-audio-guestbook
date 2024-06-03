@@ -1,6 +1,7 @@
 import logging
 import signal
 import subprocess
+import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ class AudioInterface:
                         str(self.channels),
                         silence_file,
                         "trim",
-                        "0.0",
+                        "0",
                         str(start_delay_sec),
                     ],
                     check=True,
@@ -113,9 +114,18 @@ class AudioInterface:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            self.playback_process.wait()
+
+            while self.playback_process and self.playback_process.poll() is None:
+                if not self.continue_playback:
+                    self.playback_process.terminate()
+                    self.playback_process.wait()
+                    break
+                time.sleep(0.1)
         except subprocess.CalledProcessError as e:
             logger.error(f"Error playing {input_file}: {e}")
+        finally:
+            if self.playback_process:
+                self.playback_process = None
 
     def stop_playback(self):
         """
