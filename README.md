@@ -64,6 +64,7 @@ With your hardware ready, download the custom Raspberry Pi image provided, which
 - Download the latest release: [v1.0.0](https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases/download/v1.0.0/rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img.gz)
 - Extract the .gz file, i.e.: `gunzip rpizero_rotary_phone_audio_guestbook_v<latest>_imagebackup.img.gz`
 - **Flash the Image to an SD Card**: Use a tool like the Raspberry Pi Imager or BalenaEtcher to flash the custom image onto your SD card:
+
   - ![image](images/rpi_imager_custom.png)
   - Customize the config to specify the following username/password:
 
@@ -73,6 +74,7 @@ With your hardware ready, download the custom Raspberry Pi image provided, which
   ```
 
   - and set up your wifi network accordingly
+
 - **Insert and Boot**: Place the SD card into your Raspberry Pi and power it on to boot into the Rotary Phone Audio Guestbook.
 
 ### Configuration and Customization

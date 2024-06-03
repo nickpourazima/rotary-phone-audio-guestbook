@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 from signal import pause
@@ -47,6 +48,7 @@ class AudioGuestBook:
             mixer_control_name=self.config["mixer_control_name"],
         )
         self.setup_hook()
+        self.continue_playback = False
 
     def load_config(self):
         """
@@ -77,31 +79,75 @@ class AudioGuestBook:
         Handles the off-hook event to start playback and recording.
         """
         logger.info("Phone off hook, ready to begin!")
-        logger.info("Playing voicemail...")
-        self.audio_interface.play_audio(
-            self.config["greeting"],
-            self.config["greeting_volume"],
-            self.config["greeting_start_delay"],
-        )
-        logger.info("Playing beep...")
-        self.audio_interface.play_audio(
-            self.config["beep"],
-            self.config["beep_volume"],
-            self.config["beep_start_delay"],
-        )
 
+        self.continue_playback = True  # Ensure playback can continue
+        # Start the greeting playback in a separate thread
+        self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
+        self.greeting_thread.start()
+
+    def start_recording(self):
+        """
+        Starts the audio recording process and sets a timer for time exceeded event.
+        """
         output_file = str(
             Path(self.config["recordings_path"]) / f"{datetime.now().isoformat()}.wav"
         )
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")
 
+        # Start a timer to handle the time exceeded event
+        self.timer = threading.Timer(
+            self.config["time_exceeded_length"], self.time_exceeded
+        )
+        self.timer.start()
+
+    def play_greeting_and_beep(self):
+        """
+        Plays the greeting and beep sounds, checking for the on-hook event.
+        """
+        # Play the greeting
+        self.audio_interface.continue_playback = self.continue_playback
+        logger.info("Playing voicemail...")
+        self.audio_interface.play_audio(
+            self.config["greeting"],
+            self.config["greeting_volume"],
+            self.config["greeting_start_delay"],
+        )
+        # Check if the phone is still off-hook before playing the beep
+        if self.continue_playback:
+            logger.info("Playing beep...")
+            self.audio_interface.play_audio(
+                self.config["beep"],
+                self.config["beep_volume"],
+                self.config["beep_start_delay"],
+            )
+
+        # Start recording after the beep
+        if self.continue_playback:
+            self.start_recording()
+
     def on_hook(self):
         """
         Handles the on-hook event to stop and save the recording.
         """
         logger.info("Phone on hook. Ending call and saving recording.")
+        self.continue_playback = False  # Stop playback
         self.audio_interface.stop_recording()
+        if hasattr(self, "timer"):
+            self.timer.cancel()
+        if hasattr(self, "greeting_thread") and self.greeting_thread.is_alive():
+            logger.info("Stopping voicemail playback.")
+            self.audio_interface.stop_playback()
+
+    def time_exceeded(self):
+        """
+        Handles the event when the recording time exceeds the limit.
+        """
+        logger.info("Recording time exceeded. Stopping recording.")
+        self.audio_interface.stop_recording()
+        self.audio_interface.play_audio(
+            self.config["time_exceeded"], self.config["time_exceeded_volume"], 0
+        )
 
     def run(self):
         """
