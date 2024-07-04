@@ -113,7 +113,13 @@ class AudioGuestBook:
             self.config["greeting_volume"],
             self.config["greeting_start_delay"],
         )
-        # Check if the phone is still off-hook before playing the beep
+
+        # Check if the phone is still off-hook
+        # Start recording already BEFORE the beep
+        if self.continue_playback:
+            self.start_recording()
+
+        # Play the beep
         if self.continue_playback:
             logger.info("Playing beep...")
             self.audio_interface.play_audio(
@@ -122,9 +128,6 @@ class AudioGuestBook:
                 self.config["beep_start_delay"],
             )
 
-        # Start recording after the beep
-        if self.continue_playback:
-            self.start_recording()
 
     def on_hook(self):
         """
