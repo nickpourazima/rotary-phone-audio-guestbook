@@ -218,3 +218,7 @@ To replace:
 
 If this code helped you or if you have some feedback, I'd be happy to [hear about it](mailto:dillpicholas@duck.com)!
 Feel like saying thanks? You can [buy me a coffee](https://ko-fi.com/dillpicholas)☕.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=nickpourazima/rotary-phone-audio-guestbook&type=Date)](https://star-history.com/#nickpourazima/rotary-phone-audio-guestbook&Date)
