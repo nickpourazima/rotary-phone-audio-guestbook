@@ -1,5 +1,5 @@
-alsa_hw_mapping: plughw:3,0
-mixer_control_name: Master # look at amixer scontrols for available controls
+alsa_hw_mapping: plughw:1,0
+mixer_control_name: Speaker # look at amixer scontrols for available controls
 format: cd # look at aplay --help for available formats
 file_type: wav
 channels: 2
