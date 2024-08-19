@@ -5,8 +5,16 @@ file_type: wav
 channels: 2
 hook_gpio: 22
 hook_type: NC # or 'NO' depending on your hardware configuration
+# Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.
+hook_bounce_time: 0.1 # float or None
 recording_limit: 300
 sample_rate: 44100
+
+# Record greeting message button (Set to 0 to skip setup of this feature)
+record_greeting_gpio: 23
+record_greeting_type: NC # or 'NO' depending on your hardware configuration
+# Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.
+record_greeting_bounce_time: 0.1 # float or None
 
 # The beep sound is played when the user picks up the phone
 beep: /home/admin/rotary-phone-audio-guestbook/sounds/beep.wav
