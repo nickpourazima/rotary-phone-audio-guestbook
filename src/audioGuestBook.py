@@ -3,7 +3,6 @@
 import logging
 import sys
 import threading
-import os
 from datetime import datetime
 from pathlib import Path
 from signal import pause
@@ -124,13 +123,15 @@ class AudioGuestBook:
             self.config["greeting_start_delay"],
         )
 
-        path = os.path.join(self.config["recordings_path"], f"{datetime.now().isoformat()}.wav")
+        output_file = str(
+            Path(self.config["recordings_path"]) / f"{datetime.now().isoformat()}.wav"
+        )
         include_beep = bool(self.config["beep_include_in_message"])
 
         # Check if the phone is still off-hook
         # Start recording already BEFORE the beep (beep will be included in message)
         if self.current_event == CurrentEvent.HOOK and include_beep:
-            self.start_recording(path)
+            self.start_recording(output_file)
 
         # Play the beep
         if self.current_event == CurrentEvent.HOOK:
@@ -144,7 +145,7 @@ class AudioGuestBook:
         # Check if the phone is still off-hook
         # Start recording AFTER the beep (beep will NOT be included in message)
         if self.current_event == CurrentEvent.HOOK and not include_beep:
-            self.start_recording(path)
+            self.start_recording(output_file)
 
     def on_hook(self):
         """
