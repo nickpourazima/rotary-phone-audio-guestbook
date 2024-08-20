@@ -20,6 +20,7 @@ record_greeting_bounce_time: 0.1 # float or None
 beep: /home/admin/rotary-phone-audio-guestbook/sounds/beep.wav
 beep_volume: 1
 beep_start_delay: 0
+beep_include_in_message: True
 
 # The greeting sound is played when the user picks up the phone
 greeting: /home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav
