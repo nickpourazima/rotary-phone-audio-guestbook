@@ -78,8 +78,12 @@ class AudioGuestBook:
         pull_up = self.config["hook_type"] == "NC"
         bounce_time = self.config["hook_bounce_time"]
         self.hook = Button(hook_gpio, pull_up=pull_up, bounce_time=bounce_time)
-        self.hook.when_pressed = self.off_hook
-        self.hook.when_released = self.on_hook
+        if pull_up:
+            self.hook.when_pressed = self.off_hook
+            self.hook.when_released = self.on_hook
+        else:
+            self.hook.when_pressed = self.on_hook
+            self.hook.when_released = self.off_hook
 
     def off_hook(self):
         """
