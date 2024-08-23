@@ -19,6 +19,7 @@ This project transforms a rotary phone into a voice recorder for use at special 
   - [Software](#software)
     - [audioInterface](#audiointerface)
     - [audioGuestBook](#audioguestbook)
+    - [Web Server](#webserver)
   - [Support](#support)
 
 ## Background
@@ -195,12 +196,12 @@ To replace:
 
 ## Software
 
-### [audioInterface](audioInterface.py)
+### [audioInterface](src/audioInterface.py)
 
 - Utilizes ALSAs native aplay/arecord via subprocess calls.
 - Houses the main playback/record logic.
 
-### [audioGuestBook](/audioGuestBook.py)
+### [audioGuestBook](src/audioGuestBook.py)
 
 - This is the main operation mode of the device.
 - There are two callbacks in main which poll the gpio pins for the specified activity (hook depressed, hook released).
@@ -213,6 +214,15 @@ To replace:
   - Begins recording the guests voice message.
   - Guest hangs up, recording is stopped and stored to the `/recordings/` directory.
   - If the guest exceeds the **recording_limit** specified in the [config.yaml](/config.yaml), play the warning [time_exceeded.wav](/sounds/time_exceeded.wav) sound and stop recording.
+
+### [Web Server](webserver/server.py)
+
+- A lightweight web server that runs locally on your network running on port 8000.
+- The web page can be accessed by finding the raspberry pi's ip address, and with port 8000 (example: 192.168.1.100:8000) on any device on the same network.
+- The page will dynamically pull any recording stored in the `/recordings/` directory into a list, and will be updated by refreshing your browser.
+- A fully built .service file can be run automatically in addition to the audioGuestBook. Make sure to copy and paste this service to `/etc/systemd/system` to be able to run it with systemctl.
+
+![image](images/webserver-visual.png)
 
 ## Support
 
