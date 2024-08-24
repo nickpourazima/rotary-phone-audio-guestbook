@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recordings</title>
+</head>
+<body>
+    <h1>Files in Recording Folder</h1>
+    <ul>
+        {% for filename in files %}
+        <li><a href="{{ hyperlinks[loop.index0] }}">{{ filename }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

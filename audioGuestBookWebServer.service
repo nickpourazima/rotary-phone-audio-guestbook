@@ -1,0 +1,12 @@
+[Unit]
+Description=Webserver for Audio Guest Book for Recording Downloads
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/admin/rotary-phone-audio-guestbook/webserver
+Type=simple
+Restart=always
+ExecStart=usr/bin/gunicorn -w 1 -b 0.0.0.0:8000 server:app
+
+[Install]
+WantedBy=multi-user.target
