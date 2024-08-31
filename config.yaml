@@ -10,7 +10,7 @@ greeting: /home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav
 greeting_start_delay: 1.5
 greeting_volume: 1.0
 hook_bounce_time: 0.1
-hook_gpio: 222
+hook_gpio: 22
 hook_type: NC
 mixer_control_name: Speaker
 record_greeting_bounce_time: 0.1
