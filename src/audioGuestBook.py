@@ -55,6 +55,7 @@ class AudioGuestBook:
         )
         self.setup_hook()
         self.setup_record_greeting()
+        self.setup_shutdown_button()
         self.current_event = CurrentEvent.NONE
 
     def load_config(self):
@@ -202,9 +203,10 @@ class AudioGuestBook:
     def setup_shutdown_button(self):
         shutdown_gpio = self.config["shutdown_gpio"]
         if shutdown_gpio == 0:
-            logger.info("no shutdown button declare, skipping init")
+            logger.info("no shutdown button declared, skipping button init")
             return
-        self.shutdown_button =  Button(shutdown_gpio, pull_up=True, hold_time=2)
+        hold_time = self.config["shutdown_button_hold_time"] == 2
+        self.shutdown_button =  Button(shutdown_gpio, pull_up=True, hold_time=hold_time)
         self.shutdown_button.when_held = self.shutdown
     
     

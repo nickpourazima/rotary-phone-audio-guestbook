@@ -33,3 +33,6 @@ time_exceeded_volume: 1.0
 
 recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
 time_exceeded_length: 300
+
+shutdown_gpio: 0 #Set GPIO pin here --> Note: Pin is active LOW, pull Pin to GND to activate shutdown
+shutdown_button_hold_time: 2 # default 2 seconds
