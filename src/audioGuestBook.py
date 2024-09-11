@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from signal import pause
 from enum import Enum
+import os
 
 import yaml
 from gpiozero import Button
@@ -192,7 +193,21 @@ class AudioGuestBook:
         self.record_greeting = Button(record_greeting_gpio, pull_up=pull_up, bounce_time=bounce_time)
         self.record_greeting.when_pressed = self.pressed_record_greeting
         self.record_greeting.when_released = self.released_record_greeting
+        
+    def shutdown():
+        print("System wird heruntergefahren...")
+        os.system("sudo shutdown now")
 
+        
+    def setup_shutdown_button(self):
+        shutdown_gpio = self.config["shutdown_gpio"]
+        if shutdown_gpio == 0:
+            logger.info("no shutdown button declare, skipping init")
+            return
+        self.shutdown_button =  Button(shutdown_gpio, pull_up=True, hold_time=2)
+        self.shutdown_button.when_held = self.shutdown
+    
+    
     def pressed_record_greeting(self):
         """
         Handles the record greeting to start recording a new greeting message.
