@@ -195,7 +195,7 @@ class AudioGuestBook:
         self.record_greeting.when_released = self.released_record_greeting
         
     def shutdown():
-        print("System wird heruntergefahren...")
+        print("System shutting down...")
         os.system("sudo shutdown now")
 
         
