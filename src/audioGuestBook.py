@@ -101,10 +101,16 @@ class AudioGuestBook:
         self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
         self.greeting_thread.start()
 
-    def start_recording(self, output_file: str):
+    def start_recording(self, output_file: str):        
         """
         Starts the audio recording process and sets a timer for time exceeded event.
         """
+        
+        recording_path = Path(output_file).parent
+        if not recording_path.exists():
+            logger.info(f"Recording path does not exist. Creating path: {recording_path}")
+            recording_path.mkdir(parents=True, exist_ok=True)
+              
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")
 
