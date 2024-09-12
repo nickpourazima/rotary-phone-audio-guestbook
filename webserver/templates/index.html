@@ -26,12 +26,22 @@
             width: 100%;
             margin-top: 10px;
         }
+
+        .download-all-btn {
+            margin-bottom: 30px;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h1>Available Recordings</h1>
+        
+        <!-- Button zum Herunterladen aller Dateien als ZIP -->
+        <div class="text-center download-all-btn">
+            <a href="{{ url_for('download_all') }}" class="btn btn-success">Download All as ZIP</a>
+        </div>
+
         <div class="row">
             {% for file in files %}
             <div class="col-md-4">
