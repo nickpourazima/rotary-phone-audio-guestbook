@@ -1,110 +1,199 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Config</title>
+    <title>Edit Configuration</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+        }
+
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            margin-top: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Edit Configuration</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-        {% for category, message in messages %}
-          <li class="{{ category }}">{{ message }}</li>
-        {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-    
-    <form method="POST" enctype="multipart/form-data">
-        <label for="alsa_hw_mapping">ALSA HW Mapping:</label><br>
-        <input type="text" id="alsa_hw_mapping" name="alsa_hw_mapping" value="{{ config['alsa_hw_mapping'] }}"><br><br>
+    <div class="container mt-5">
+        <div class="card shadow-sm">
+            <div class="card-header text-center">
+                Edit Configuration
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <!-- Audio Configuration Section -->
+                    <div class="section-title">Audio Configuration</div>
+                    <div class="mb-3">
+                        <label for="alsa_hw_mapping" class="form-label">ALSA HW Mapping:</label>
+                        <input type="text" class="form-control" id="alsa_hw_mapping" name="alsa_hw_mapping" value="{{ config['alsa_hw_mapping'] }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="mixer_control_name" class="form-label">Mixer Control Name:</label>
+                        <input type="text" class="form-control" id="mixer_control_name" name="mixer_control_name" value="{{ config['mixer_control_name'] }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="format" class="form-label">Format:</label>
+                            <input type="text" class="form-control" id="format" name="format" value="{{ config['format'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="file_type" class="form-label">File Type:</label>
+                            <input type="text" class="form-control" id="file_type" name="file_type" value="{{ config['file_type'] }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="channels" class="form-label">Channels:</label>
+                        <input type="number" class="form-control" id="channels" name="channels" value="{{ config['channels'] }}">
+                    </div>
 
-        <label for="mixer_control_name">Mixer Control Name:</label><br>
-        <input type="text" id="mixer_control_name" name="mixer_control_name" value="{{ config['mixer_control_name'] }}"><br><br>
+                    <!-- GPIO Settings Section -->
+                    <div class="section-title">GPIO Settings</div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="hook_gpio" class="form-label">Hook GPIO:</label>
+                            <input type="number" class="form-control" id="hook_gpio" name="hook_gpio" value="{{ config['hook_gpio'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="hook_type" class="form-label">Hook Type:</label>
+                            <input type="text" class="form-control" id="hook_type" name="hook_type" value="{{ config['hook_type'] }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="hook_bounce_time" class="form-label">Hook Bounce Time:</label>
+                        <input type="number" step="0.1" class="form-control" id="hook_bounce_time" name="hook_bounce_time" value="{{ config['hook_bounce_time'] }}">
+                    </div>
 
-        <label for="format">Format:</label><br>
-        <input type="text" id="format" name="format" value="{{ config['format'] }}"><br><br>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="record_greeting_gpio" class="form-label">Record Greeting GPIO:</label>
+                            <input type="number" class="form-control" id="record_greeting_gpio" name="record_greeting_gpio" value="{{ config['record_greeting_gpio'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="record_greeting_type" class="form-label">Record Greeting Type:</label>
+                            <input type="text" class="form-control" id="record_greeting_type" name="record_greeting_type" value="{{ config['record_greeting_type'] }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="record_greeting_bounce_time" class="form-label">Record Greeting Bounce Time:</label>
+                        <input type="number" step="0.1" class="form-control" id="record_greeting_bounce_time" name="record_greeting_bounce_time" value="{{ config['record_greeting_bounce_time'] }}">
+                    </div>
 
-        <label for="file_type">File Type:</label><br>
-        <input type="text" id="file_type" name="file_type" value="{{ config['file_type'] }}"><br><br>
+                    <!-- Recording Settings Section -->
+                    <div class="section-title">Recording Settings</div>
+                    <div class="mb-3">
+                        <label for="recording_limit" class="form-label">Recording Limit (seconds):</label>
+                        <input type="number" class="form-control" id="recording_limit" name="recording_limit" value="{{ config['recording_limit'] }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sample_rate" class="form-label">Sample Rate:</label>
+                        <input type="number" class="form-control" id="sample_rate" name="sample_rate" value="{{ config['sample_rate'] }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="recordings_path" class="form-label">Recordings Path:</label>
+                        <input type="text" class="form-control" id="recordings_path" name="recordings_path" value="{{ config['recordings_path'] }}">
+                    </div>
 
-        <label for="channels">Channels:</label><br>
-        <input type="number" id="channels" name="channels" value="{{ config['channels'] }}"><br><br>
+                    <!-- Audio Feedback Section -->
+                    <div class="section-title">Audio Feedback</div>
+                    <div class="mb-3">
+                        <label for="beep" class="form-label">Beep Sound Path:</label>
+                        <input type="text" class="form-control" id="beep" name="beep" value="{{ config['beep'] }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="beep_volume" class="form-label">Beep Volume:</label>
+                            <input type="number" step="0.1" class="form-control" id="beep_volume" name="beep_volume" value="{{ config['beep_volume'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="beep_start_delay" class="form-label">Beep Start Delay (seconds):</label>
+                            <input type="number" step="0.1" class="form-control" id="beep_start_delay" name="beep_start_delay" value="{{ config['beep_start_delay'] }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="beep_include_in_message" class="form-label">Beep Include in Message:</label>
+                        <select class="form-select" id="beep_include_in_message" name="beep_include_in_message">
+                            <option value="True" {% if config['beep_include_in_message'] %}selected{% endif %}>True</option>
+                            <option value="False" {% if not config['beep_include_in_message'] %}selected{% endif %}>False</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="greeting" class="form-label">Greeting Sound Path:</label>
+                        <input type="text" class="form-control" id="greeting" name="greeting" value="{{ config['greeting'] }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="greeting_volume" class="form-label">Greeting Volume:</label>
+                            <input type="number" step="0.1" class="form-control" id="greeting_volume" name="greeting_volume" value="{{ config['greeting_volume'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="greeting_start_delay" class="form-label">Greeting Start Delay (seconds):</label>
+                            <input type="number" step="0.1" class="form-control" id="greeting_start_delay" name="greeting_start_delay" value="{{ config['greeting_start_delay'] }}">
+                        </div>
+                    </div>
 
-        <label for="hook_gpio">Hook GPIO:</label><br>
-        <input type="number" id="hook_gpio" name="hook_gpio" value="{{ config['hook_gpio'] }}"><br><br>
+                    <!-- Time Exceeded Settings -->
+                    <div class="section-title">Time Exceeded Settings</div>
+                    <div class="mb-3">
+                        <label for="time_exceeded" class="form-label">Time Exceeded Sound Path:</label>
+                        <input type="text" class="form-control" id="time_exceeded" name="time_exceeded" value="{{ config['time_exceeded'] }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="time_exceeded_volume" class="form-label">Time Exceeded Volume:</label>
+                            <input type="number" step="0.1" class="form-control" id="time_exceeded_volume" name="time_exceeded_volume" value="{{ config['time_exceeded_volume'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="time_exceeded_length" class="form-label">Time Exceeded Length (seconds):</label>
+                            <input type="number" class="form-control" id="time_exceeded_length" name="time_exceeded_length" value="{{ config['time_exceeded_length'] }}">
+                        </div>
+                    </div>
 
-        <label for="hook_type">Hook Type:</label><br>
-        <input type="text" id="hook_type" name="hook_type" value="{{ config['hook_type'] }}"><br><br>
+                    <!-- Shutdown Settings -->
+                    <div class="section-title">Shutdown Settings</div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="shutdown_gpio" class="form-label">Shutdown GPIO:</label>
+                            <input type="number" class="form-control" id="shutdown_gpio" name="shutdown_gpio" value="{{ config['shutdown_gpio'] }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="shutdown_button_hold_time" class="form-label">Shutdown Button Hold Time (seconds):</label>
+                            <input type="number" step="0.1" class="form-control" id="shutdown_button_hold_time" name="shutdown_button_hold_time" value="{{ config['shutdown_button_hold_time'] }}">
+                        </div>
+                    </div>
 
-        <label for="hook_bounce_time">Hook Bounce Time:</label><br>
-        <input type="text" id="hook_bounce_time" name="hook_bounce_time" value="{{ config['hook_bounce_time'] }}"><br><br>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                    </div>
+                </form>
 
-        <label for="recording_limit">Recording Limit:</label><br>
-        <input type="number" id="recording_limit" name="recording_limit" value="{{ config['recording_limit'] }}"><br><br>
+                <div class="mt-3">
+                    <a href="/" class="btn btn-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <label for="sample_rate">Sample Rate:</label><br>
-        <input type="number" id="sample_rate" name="sample_rate" value="{{ config['sample_rate'] }}"><br><br>
-
-        <label for="record_greeting_gpio">Record Greeting GPIO:</label><br>
-        <input type="number" id="record_greeting_gpio" name="record_greeting_gpio" value="{{ config['record_greeting_gpio'] }}"><br><br>
-
-        <label for="record_greeting_type">Record Greeting Type:</label><br>
-        <input type="text" id="record_greeting_type" name="record_greeting_type" value="{{ config['record_greeting_type'] }}"><br><br>
-
-        <label for="record_greeting_bounce_time">Record Greeting Bounce Time:</label><br>
-        <input type="text" id="record_greeting_bounce_time" name="record_greeting_bounce_time" value="{{ config['record_greeting_bounce_time'] }}"><br><br>
-
-        <label for="beep">Beep Sound Path:</label><br>
-        <input type="text" id="beep" name="beep" value="{{ config['beep'] }}"><br><br>
-
-        <label for="beep_file">Upload New Beep File:</label><br>
-        <input type="file" id="beep_file" name="beep_file"><br><br>
-
-        <label for="beep_volume">Beep Volume:</label><br>
-        <input type="text" id="beep_volume" name="beep_volume" value="{{ config['beep_volume'] }}"><br><br>
-
-        <label for="beep_start_delay">Beep Start Delay:</label><br>
-        <input type="text" id="beep_start_delay" name="beep_start_delay" value="{{ config['beep_start_delay'] }}"><br><br>
-
-        <label for="beep_include_in_message">Beep Include in Message:</label><br>
-        <select id="beep_include_in_message" name="beep_include_in_message">
-            <option value="True" {% if config['beep_include_in_message'] %}selected{% endif %}>True</option>
-            <option value="False" {% if not config['beep_include_in_message'] %}selected{% endif %}>False</option>
-        </select><br><br>
-
-        <label for="greeting">Greeting Sound Path:</label><br>
-        <input type="text" id="greeting" name="greeting" value="{{ config['greeting'] }}"><br><br>
-
-        <label for="greeting_file">Upload New Greeting File:</label><br>
-        <input type="file" id="greeting_file" name="greeting_file"><br><br>
-
-        <label for="greeting_volume">Greeting Volume:</label><br>
-        <input type="text" id="greeting_volume" name="greeting_volume" value="{{ config['greeting_volume'] }}"><br><br>
-
-        <label for="greeting_start_delay">Greeting Start Delay:</label><br>
-        <input type="text" id="greeting_start_delay" name="greeting_start_delay" value="{{ config['greeting_start_delay'] }}"><br><br>
-
-        <label for="time_exceeded">Time Exceeded Sound Path:</label><br>
-        <input type="text" id="time_exceeded" name="time_exceeded" value="{{ config['time_exceeded'] }}"><br><br>
-
-        <label for="time_exceeded_file">Upload New Time Exceeded File:</label><br>
-        <input type="file" id="time_exceeded_file" name="time_exceeded_file"><br><br>
-
-        <label for="time_exceeded_volume">Time Exceeded Volume:</label><br>
-        <input type="text" id="time_exceeded_volume" name="time_exceeded_volume" value="{{ config['time_exceeded_volume'] }}"><br><br>
-
-        <label for="recordings_path">Recordings Path:</label><br>
-        <input type="text" id="recordings_path" name="recordings_path" value="{{ config['recordings_path'] }}"><br><br>
-
-        <label for="time_exceeded_length">Time Exceeded Length:</label><br>
-        <input type="number" id="time_exceeded_length" name="time_exceeded_length" value="{{ config['time_exceeded_length'] }}"><br><br>
-
-        <input type="submit" value="Save Configuration">
-    </form>
-
-    <br><a href="{{ url_for('index') }}">Back to Home</a>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

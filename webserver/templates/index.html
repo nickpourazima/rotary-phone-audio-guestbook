@@ -1,14 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Recordings</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Recordings</title>
+    <!-- Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            margin-bottom: 20px;
+        }
+
+        .audio-player {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Files in Recording Folder</h1>
-    <ul>
-        {% for filename in files %}
-        <li><a href="{{ hyperlinks[loop.index0] }}">{{ filename }}</a></li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <h1>Available Recordings</h1>
+        <div class="row">
+            {% for file in files %}
+            <div class="col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <!-- Dateiname als Titel -->
+                        <h5 class="card-title">{{ file }}</h5>
+
+                        <!-- Audio-Player -->
+                        <audio controls class="audio-player">
+                            <source src="{{ url_for('serve_recording', filename=file) }}" type="audio/wav">
+                            Your browser does not support the audio element.
+                        </audio>
+
+                        <!-- Link zum Herunterladen der Datei -->
+                        <a href="{{ url_for('serve_recording', filename=file) }}" class="btn btn-primary mt-3">Download</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 </body>
+
 </html>

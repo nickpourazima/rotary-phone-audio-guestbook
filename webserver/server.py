@@ -41,6 +41,8 @@ def index():
         if os.path.isfile(os.path.join(recordings_path, filename)):
             files.append(filename)
             hyperlinks.append(request.url + filename)
+            
+    print(files)  # Debugging
     
     return render_template('index.html', files=files, hyperlinks=hyperlinks)
 
@@ -123,6 +125,11 @@ def edit_config():
         current_config = {}
     
     return render_template('edit_config.html', config=current_config)
+
+
+@app.route('/recordings/<filename>')
+def serve_recording(filename):
+    return send_from_directory(config['recordings_path'], filename)
 
 if __name__ == '__main__':
     app.run()  # Runs at port 8000 w/ Gunicorn
