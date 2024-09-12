@@ -34,13 +34,12 @@
         .btn-primary, .btn-secondary {
             width: 100%;
         }
-
     </style>
 </head>
 
 <body>
     <div class="container mt-5">
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             <!-- Audio Configuration Card -->
             <div class="card shadow-sm">
                 <div class="card-header text-center">Audio Configuration</div>
@@ -64,9 +63,6 @@
                     
                     <label for="channels" class="form-label">Channels:</label>
                     <input type="number" class="form-control" id="channels" name="channels" value="{{ config['channels'] }}">
-
-                    <label for="sample_rate" class="form-label">Sample Rate:</label>
-                    <input type="number" class="form-control" id="sample_rate" name="sample_rate" value="{{ config['sample_rate'] }}">
                 </div>
             </div>
 
@@ -111,7 +107,8 @@
                     <label for="recording_limit" class="form-label">Recording Limit (seconds):</label>
                     <input type="number" class="form-control" id="recording_limit" name="recording_limit" value="{{ config['recording_limit'] }}">
                     
-                    
+                    <label for="sample_rate" class="form-label">Sample Rate:</label>
+                    <input type="number" class="form-control" id="sample_rate" name="sample_rate" value="{{ config['sample_rate'] }}">
                     
                     <label for="recordings_path" class="form-label">Recordings Path:</label>
                     <input type="text" class="form-control" id="recordings_path" name="recordings_path" value="{{ config['recordings_path'] }}">
@@ -122,9 +119,12 @@
             <div class="card shadow-sm">
                 <div class="card-header text-center">Audio Feedback</div>
                 <div class="card-body">
+                    <!-- Beep Sound Configuration -->
                     <label for="beep" class="form-label">Beep Sound Path:</label>
                     <input type="text" class="form-control" id="beep" name="beep" value="{{ config['beep'] }}">
-                    
+                    <label for="beep_file" class="form-label">Upload New Beep File:</label>
+                    <input type="file" class="form-control" id="beep_file" name="beep_file">
+
                     <div class="row">
                         <div class="col-md-6">
                             <label for="beep_volume" class="form-label">Beep Volume:</label>
@@ -141,10 +141,13 @@
                         <option value="True" {% if config['beep_include_in_message'] %}selected{% endif %}>True</option>
                         <option value="False" {% if not config['beep_include_in_message'] %}selected{% endif %}>False</option>
                     </select>
-                    
+
+                    <!-- Greeting Sound Configuration -->
                     <label for="greeting" class="form-label">Greeting Sound Path:</label>
                     <input type="text" class="form-control" id="greeting" name="greeting" value="{{ config['greeting'] }}">
-                    
+                    <label for="greeting_file" class="form-label">Upload New Greeting File:</label>
+                    <input type="file" class="form-control" id="greeting_file" name="greeting_file">
+
                     <div class="row">
                         <div class="col-md-6">
                             <label for="greeting_volume" class="form-label">Greeting Volume:</label>
@@ -158,13 +161,15 @@
                 </div>
             </div>
 
-            <!-- Time Exceeded Settings Card -->
+            <!-- Time Exceeded Sound Configuration -->
             <div class="card shadow-sm">
                 <div class="card-header text-center">Time Exceeded Settings</div>
                 <div class="card-body">
                     <label for="time_exceeded" class="form-label">Time Exceeded Sound Path:</label>
                     <input type="text" class="form-control" id="time_exceeded" name="time_exceeded" value="{{ config['time_exceeded'] }}">
-                    
+                    <label for="time_exceeded_file" class="form-label">Upload New Time Exceeded File:</label>
+                    <input type="file" class="form-control" id="time_exceeded_file" name="time_exceeded_file">
+
                     <div class="row">
                         <div class="col-md-6">
                             <label for="time_exceeded_volume" class="form-label">Time Exceeded Volume:</label>
