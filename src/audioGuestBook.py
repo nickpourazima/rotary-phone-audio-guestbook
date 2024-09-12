@@ -53,6 +53,8 @@ class AudioGuestBook:
             channels=self.config["channels"],
             mixer_control_name=self.config["mixer_control_name"],
         )
+        
+        
         self.setup_hook()
         self.setup_record_greeting()
         self.setup_shutdown_button()
@@ -280,6 +282,7 @@ class AudioGuestBook:
         logger.info("System ready. Lift the handset to start.")
         pause()
 
+ 
 
 if __name__ == "__main__":
     CONFIG_PATH = Path(__file__).parent / "../config.yaml"
