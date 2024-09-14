@@ -30,3 +30,4 @@ toml==0.10.2
 typing_extensions==4.12.2
 urllib3==1.26.12
 Werkzeug==3.0.3
+ruamel.yaml==0.18.6 

@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from signal import pause
 from enum import Enum
+import os
 
 import yaml
 from gpiozero import Button
@@ -43,6 +44,13 @@ class AudioGuestBook:
         """
         self.config_path = config_path
         self.config = self.load_config()
+        
+        # Check if the recordings folder exists, if not, create it.
+        recordings_path = Path(self.config["recordings_path"])
+        if not recordings_path.exists():
+            logger.info(f"Recordings folder does not exist. Creating folder: {recordings_path}")
+            recordings_path.mkdir(parents=True, exist_ok=True)
+        
         self.audio_interface = AudioInterface(
             alsa_hw_mapping=self.config["alsa_hw_mapping"],
             format=self.config["format"],
@@ -52,8 +60,11 @@ class AudioGuestBook:
             channels=self.config["channels"],
             mixer_control_name=self.config["mixer_control_name"],
         )
+        
+        
         self.setup_hook()
         self.setup_record_greeting()
+        self.setup_shutdown_button()
         self.current_event = CurrentEvent.NONE
 
     def load_config(self):
@@ -101,10 +112,11 @@ class AudioGuestBook:
         self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
         self.greeting_thread.start()
 
-    def start_recording(self, output_file: str):
+    def start_recording(self, output_file: str):        
         """
         Starts the audio recording process and sets a timer for time exceeded event.
         """
+                      
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")
 
@@ -186,7 +198,22 @@ class AudioGuestBook:
         self.record_greeting = Button(record_greeting_gpio, pull_up=pull_up, bounce_time=bounce_time)
         self.record_greeting.when_pressed = self.pressed_record_greeting
         self.record_greeting.when_released = self.released_record_greeting
+        
+    def shutdown():
+        print("System shutting down...")
+        os.system("sudo shutdown now")
 
+        
+    def setup_shutdown_button(self):
+        shutdown_gpio = self.config["shutdown_gpio"]
+        if shutdown_gpio == 0:
+            logger.info("no shutdown button declared, skipping button init")
+            return
+        hold_time = self.config["shutdown_button_hold_time"] == 2
+        self.shutdown_button =  Button(shutdown_gpio, pull_up=True, hold_time=hold_time)
+        self.shutdown_button.when_held = self.shutdown
+    
+    
     def pressed_record_greeting(self):
         """
         Handles the record greeting to start recording a new greeting message.
@@ -257,6 +284,7 @@ class AudioGuestBook:
         logger.info("System ready. Lift the handset to start.")
         pause()
 
+ 
 
 if __name__ == "__main__":
     CONFIG_PATH = Path(__file__).parent / "../config.yaml"
