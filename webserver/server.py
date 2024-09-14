@@ -150,5 +150,19 @@ def download_all():
     return send_file(memory_file, mimetype='application/zip', as_attachment=True, download_name='recordings.zip')
 
 
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    """
+    Shuts down the Raspberry Pi system.
+    """
+    try:
+        os.system("sudo shutdown now")
+        flash('System is shutting down...', 'info')
+    except Exception as e:
+        logger.error(f"Failed to shut down: {e}")
+        flash('Failed to shut down the system!', 'error')
+    return redirect(url_for('index'))
+
+
 if __name__ == '__main__':
     app.run()  # Runs at port 8000 w/ Gunicorn
