@@ -2,8 +2,10 @@ import os
 import sys
 import logging
 from pathlib import Path
-from flask import Flask, render_template, send_from_directory, request, redirect, url_for, flash
+from flask import Flask, render_template, send_from_directory, request, send_file, redirect, url_for, flash
 from ruamel.yaml import YAML
+import zipfile
+import io
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,6 +43,8 @@ def index():
         if os.path.isfile(os.path.join(recordings_path, filename)):
             files.append(filename)
             hyperlinks.append(request.url + filename)
+            
+    print(files)  # Debugging
     
     return render_template('index.html', files=files, hyperlinks=hyperlinks)
 
@@ -123,6 +127,28 @@ def edit_config():
         current_config = {}
     
     return render_template('edit_config.html', config=current_config)
+
+
+@app.route('/recordings/<filename>')
+def serve_recording(filename):
+    return send_from_directory(config['recordings_path'], filename)
+
+
+@app.route('/download-all')
+def download_all():
+    # Erstelle ein Byte-Stream für die ZIP-Datei
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w') as zf:
+        for filename in os.listdir(recordings_path):
+            if filename.endswith('.wav'):
+                # Füge jede Datei zum ZIP-Archiv hinzu
+                file_path = os.path.join(recordings_path, filename)
+                zf.write(file_path, arcname=filename)  # arcname = nur der Dateiname in der ZIP
+    memory_file.seek(0)
+
+    # Sende die ZIP-Datei an den Benutzer
+    return send_file(memory_file, mimetype='application/zip', as_attachment=True, download_name='recordings.zip')
+
 
 if __name__ == '__main__':
     app.run()  # Runs at port 8000 w/ Gunicorn

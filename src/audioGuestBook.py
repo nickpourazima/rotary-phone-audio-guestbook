@@ -44,6 +44,13 @@ class AudioGuestBook:
         """
         self.config_path = config_path
         self.config = self.load_config()
+        
+        # Check if the recordings folder exists, if not, create it.
+        recordings_path = Path(self.config["recordings_path"])
+        if not recordings_path.exists():
+            logger.info(f"Recordings folder does not exist. Creating folder: {recordings_path}")
+            recordings_path.mkdir(parents=True, exist_ok=True)
+        
         self.audio_interface = AudioInterface(
             alsa_hw_mapping=self.config["alsa_hw_mapping"],
             format=self.config["format"],
@@ -53,6 +60,8 @@ class AudioGuestBook:
             channels=self.config["channels"],
             mixer_control_name=self.config["mixer_control_name"],
         )
+        
+        
         self.setup_hook()
         self.setup_record_greeting()
         self.setup_shutdown_button()
@@ -107,12 +116,7 @@ class AudioGuestBook:
         """
         Starts the audio recording process and sets a timer for time exceeded event.
         """
-        
-        recording_path = Path(output_file).parent
-        if not recording_path.exists():
-            logger.info(f"Recording path does not exist. Creating path: {recording_path}")
-            recording_path.mkdir(parents=True, exist_ok=True)
-              
+                      
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")
 
@@ -280,6 +284,7 @@ class AudioGuestBook:
         logger.info("System ready. Lift the handset to start.")
         pause()
 
+ 
 
 if __name__ == "__main__":
     CONFIG_PATH = Path(__file__).parent / "../config.yaml"
