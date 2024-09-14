@@ -31,8 +31,7 @@ greeting_start_delay: 1.5
 time_exceeded: /home/admin/rotary-phone-audio-guestbook/sounds/time_exceeded.wav
 time_exceeded_volume: 1.0
 
-#recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
-recordings_path: D:\debug\audiobook\webserver\rotary-phone-audio-guestbook\recordings
+recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
 time_exceeded_length: 300
 
 shutdown_gpio: 0 #Set GPIO pin here --> Note: Pin is active LOW, pull Pin to GND to activate shutdown
