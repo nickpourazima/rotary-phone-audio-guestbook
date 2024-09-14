@@ -10,12 +10,15 @@ from enum import Enum
 import os
 
 import yaml
+from gpiozero import Device
+from gpiozero.pins.rpigpio import RPiGPIOFactory
 from gpiozero import Button
 
 from audioInterface import AudioInterface
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+Device.pin_factory = RPiGPIOFactory()
 
 class CurrentEvent(Enum):
     NONE = 0
