@@ -151,7 +151,7 @@ def download_selected():
     memory_file = BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
         for filename in selected_files:
-            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file_path = os.path.join(upload_folder, filename)
             if os.path.exists(file_path):
                 zf.write(file_path, filename)
 
