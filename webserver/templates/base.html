@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='img/favicon.ico') }}"
+    />
+    <title>{% block title %}Audio Guestbook{% endblock %}</title>
+    <link
+      href="{{ url_for('static', filename='css/output.min.css') }}"
+      rel="stylesheet"
+    />
+    <script
+      src="{{ url_for('static', filename='js/theme.js') }}"
+      defer
+    ></script>
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body
+    class="bg-background text-text dark:bg-dark-background dark:text-dark-text transition-colors duration-300"
+  >
+    <header
+      class="bg-primary dark:bg-dark-primary text-text dark:text-dark-text shadow-md"
+    >
+      <div class="container mx-auto px-4 py-3">
+        <div class="flex justify-between items-center">
+          <!-- Left Side: Title -->
+          <a href="#" class="text-2xl font-bold flex items-center">
+            Audio Guestbook
+          </a>
+
+          <!-- Right Side: Icons -->
+          <nav class="flex items-center space-x-6">
+            <!-- Home Icon -->
+            <a
+              href="{{ url_for('index') }}"
+              class="hover:text-accent flex items-center p-2"
+              title="Recordings"
+            >
+              <img
+                id="home-icon"
+                src="{{ url_for('static', filename='img/home_light.png') }}"
+                alt="Recordings"
+                class="w-6 h-6"
+              />
+            </a>
+
+            <!-- Settings Icon -->
+            <a
+              href="{{ url_for('edit_config') }}"
+              class="hover:text-accent flex items-center p-2"
+              title="Settings"
+            >
+              <img
+                id="settings-icon"
+                src="{{ url_for('static', filename='img/gear_light.png') }}"
+                alt="Settings"
+                class="w-6 h-6"
+              />
+            </a>
+
+            <!-- Theme Switcher Icon -->
+            <label
+              class="theme-switch relative inline-block w-14 h-6 flex items-center cursor-pointer"
+            >
+              <input type="checkbox" class="opacity-0 w-0 h-0" />
+              <img
+                id="theme-icon"
+                src="{{ url_for('static', filename='img/sun.png') }}"
+                alt="Theme"
+                class="cursor-pointer w-6 h-6 transition-transform"
+              />
+            </label>
+          </nav>
+        </div>
+      </div>
+    </header>
+    <main class="container mx-auto px-4 py-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/menu.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

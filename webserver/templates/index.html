@@ -1,72 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Audio Guestbook - Recordings{% endblock %}
+{% block extra_head %}
+<script src="{{ url_for('static', filename='js/moment.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hammer.min.js') }}"></script>
+{% endblock %}
+{% block content %}
+<h1 class="text-3xl font-bold text-center mb-8">Available Recordings</h1>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Available Recordings</title>
-    <!-- Bootstrap CSS -->
-    <link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            padding: 20px;
-        }
+<div class="flex justify-end items-center mb-6">
+  <button id="download-selected" class="btn-primary">
+    <i class="fas fa-download mr-2"></i>Download Selected
+  </button>
+</div>
 
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            margin-bottom: 20px;
-        }
-
-        .audio-player {
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .download-all-btn {
-            margin-bottom: 30px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <h1>Available Recordings</h1>
-        
-        <!-- Button zum Herunterladen aller Dateien als ZIP -->
-        <div class="text-center download-all-btn">
-            <a href="{{ url_for('download_all') }}" class="btn btn-success">Download All as ZIP</a>
-        </div>
-
-        <div class="row">
-            {% for file in files %}
-            <div class="col-md-4">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <!-- Dateiname als Titel -->
-                        <h5 class="card-title">{{ file }}</h5>
-
-                        <!-- Audio-Player -->
-                        <audio controls class="audio-player">
-                            <source src="{{ url_for('serve_recording', filename=file) }}" type="audio/wav">
-                            Your browser does not support the audio element.
-                        </audio>
-
-                        <!-- Link zum Herunterladen der Datei -->
-                        <a href="{{ url_for('serve_recording', filename=file) }}" class="btn btn-primary mt-3">Download</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Bootstrap JS -->
-    <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-</body>
-
-</html>
+<div class="overflow-x-auto">
+  <table class="w-full">
+    <thead>
+      <tr class="bg-primary dark:bg-dark-primary text-text dark:text-dark-text">
+        <th class="p-2 w-12">
+          <input type="checkbox" id="select-all" class="mr-2" />
+        </th>
+        <th class="p-2 text-left">Filename</th>
+        <th class="p-2 text-left">Audio</th>
+        <th class="p-2 text-left">Date</th>
+        <th class="p-2 w-12"></th>
+      </tr>
+    </thead>
+    <tbody id="recording-list">
+      <!-- Recordings will be dynamically inserted here -->
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/recordings.js') }}"></script>
+{% endblock %}

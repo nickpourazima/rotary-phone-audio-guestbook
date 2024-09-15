@@ -1,168 +1,190 @@
+import io
+import logging
 import os
 import sys
-import logging
-from pathlib import Path
-from flask import Flask, render_template, send_from_directory, request, send_file, redirect, url_for, flash
-from ruamel.yaml import YAML
 import zipfile
-import io
+from io import BytesIO
+from pathlib import Path
+
+from flask import (
+    Flask,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    send_from_directory,
+    url_for,
+)
+from ruamel.yaml import YAML
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Set up app and grab configuration path
-app = Flask(__name__)
-app.secret_key = 'supersecretkey'  # Needed for flashing messages
-config_path = Path(__file__).parent / '../config.yaml'
-upload_folder = Path(__file__).parent / '../uploads'  # Directory to save uploaded files
-upload_folder.mkdir(parents=True, exist_ok=True)  # Create the upload folder if it doesn't exist
+app = Flask(__name__, static_url_path="/static", static_folder="./static")
+app.secret_key = "supersecretkey"  # Needed for flashing messages
+config_path = Path(__file__).parent.parent / "config.yaml"
+upload_folder = Path(__file__).parent.parent / "uploads"
+upload_folder.mkdir(parents=True, exist_ok=True)
 
 # Initialize ruamel.yaml
 yaml = YAML()
 
 # Attempt to grab recording path within the config.yaml file
 try:
-    with open(config_path, 'r') as f:
+    with config_path.open("r") as f:
         config = yaml.load(f)
 except FileNotFoundError as e:
-    logger.error(f'Configuration file not found: {e}')
+    logger.error(f"Configuration file not found: {e}")
     sys.exit(1)
 
-recordings_path = config['recordings_path']
+recordings_path = Path(config["recordings_path"])
+
 
 # Function to convert and normalize paths to Unix format
-def normalize_path(path_str):
-    return str(Path(path_str).as_posix())  # Ensures path is Unix-compatible
+def normalize_path(path):
+    return str(path.as_posix())
 
-# Homepage
-@app.route('/')
+
+@app.route("/")
 def index():
-    files = []
-    hyperlinks = []
-    for filename in os.listdir(recordings_path):
-        if os.path.isfile(os.path.join(recordings_path, filename)):
-            files.append(filename)
-            hyperlinks.append(request.url + filename)
-            
-    print(files)  # Debugging
-    
-    return render_template('index.html', files=files, hyperlinks=hyperlinks)
+    return render_template("index.html")
+
 
 # Dynamic file downloader (used for hyperlinks generated above)
-@app.route('/<filename>', methods=['GET', 'POST'])
+@app.route("/<filename>", methods=["GET", "POST"])
 def download_file(filename):
     return send_from_directory(recordings_path, filename, as_attachment=True)
 
-# Configuration editor
-@app.route('/config', methods=['GET', 'POST'])
+
+@app.route("/delete/<filename>", methods=["POST"])
+def delete_file(filename):
+    file_path = recordings_path / filename
+    try:
+        file_path.unlink()
+        return jsonify({"success": True, "message": f"{filename} has been deleted."})
+    except Exception as e:
+        return jsonify(
+            {"success": False, "message": f"Error deleting file: {str(e)}"}
+        ), 500
+
+
+@app.route("/api/recordings")
+def get_recordings():
+    files = [f.name for f in recordings_path.iterdir() if f.is_file()]
+    return jsonify(files)
+
+
+def update_config(form_data):
+    for key, value in form_data.items():
+        if key in config:
+            if isinstance(config[key], int):
+                config[key] = int(value)
+            elif isinstance(config[key], float):
+                config[key] = float(value)
+            elif isinstance(config[key], bool):
+                config[key] = value.lower() == "true"
+            else:
+                config[key] = value
+
+
+@app.route("/config", methods=["GET", "POST"])
 def edit_config():
-    if request.method == 'POST':
-        # Handle Greeting file upload
-        if 'greeting_file' in request.files:
-            greeting_file = request.files['greeting_file']
-            if greeting_file.filename != '':
-                greeting_filename = greeting_file.filename
-                greeting_path = upload_folder / greeting_filename
-                greeting_file.save(greeting_path)
-                # Update the greeting path in the config
-                config['greeting'] = normalize_path(greeting_path.relative_to(Path(__file__).parent.parent))
+    if request.method == "POST":
+        # Handle file uploads
+        for field in ["greeting", "beep", "time_exceeded"]:
+            if f"{field}_file" in request.files:
+                file = request.files[f"{field}_file"]
+                if file.filename:
+                    file_path = upload_folder / file.filename
+                    file.save(file_path)
+                    config[field] = normalize_path(
+                        file_path.relative_to(config_path.parent)
+                    )
 
-        # Handle Beep file upload
-        if 'beep_file' in request.files:
-            beep_file = request.files['beep_file']
-            if beep_file.filename != '':
-                beep_filename = beep_file.filename
-                beep_path = upload_folder / beep_filename
-                beep_file.save(beep_path)
-                # Update the beep path in the config
-                config['beep'] = normalize_path(beep_path.relative_to(Path(__file__).parent.parent))
+        update_config(request.form)
 
-        # Handle Time Exceeded file upload
-        if 'time_exceeded_file' in request.files:
-            time_exceeded_file = request.files['time_exceeded_file']
-            if time_exceeded_file.filename != '':
-                time_exceeded_filename = time_exceeded_file.filename
-                time_exceeded_path = upload_folder / time_exceeded_filename
-                time_exceeded_file.save(time_exceeded_path)
-                # Update the time exceeded path in the config
-                config['time_exceeded'] = normalize_path(time_exceeded_path.relative_to(Path(__file__).parent.parent))
-
-        # Update the config fields without losing comments
-        config['alsa_hw_mapping'] = request.form['alsa_hw_mapping']
-        config['mixer_control_name'] = request.form['mixer_control_name']
-        config['format'] = request.form['format']
-        config['file_type'] = request.form['file_type']
-        config['channels'] = int(request.form['channels'])
-        config['hook_gpio'] = int(request.form['hook_gpio'])
-        config['hook_type'] = request.form['hook_type']
-        config['hook_bounce_time'] = float(request.form['hook_bounce_time'])
-        config['recording_limit'] = int(request.form['recording_limit'])
-        config['sample_rate'] = int(request.form['sample_rate'])
-        config['record_greeting_gpio'] = int(request.form['record_greeting_gpio'])
-        config['record_greeting_type'] = request.form['record_greeting_type']
-        config['record_greeting_bounce_time'] = float(request.form['record_greeting_bounce_time'])
-        config['beep_volume'] = float(request.form['beep_volume'])
-        config['beep_start_delay'] = float(request.form['beep_start_delay'])
-        config['beep_include_in_message'] = request.form['beep_include_in_message'] == 'True'
-        config['greeting'] = config.get('greeting', request.form['greeting'])
-        config['greeting_volume'] = float(request.form['greeting_volume'])
-        config['greeting_start_delay'] = float(request.form['greeting_start_delay'])
-        config['time_exceeded_volume'] = float(request.form['time_exceeded_volume'])
-        config['recordings_path'] = normalize_path(request.form['recordings_path'])
-        config['time_exceeded_length'] = int(request.form['time_exceeded_length'])
-
-        # Write the updated config back to the file
-        with open(config_path, 'w') as f:
+        with config_path.open("w") as f:
             yaml.dump(config, f)
 
-        flash('Configuration updated successfully!', 'success')
-        return redirect(url_for('edit_config'))
+        flash("Configuration updated successfully!", "success")
+        return redirect(url_for("edit_config"))
 
     # Load the current configuration to display in the form
     try:
-        with open(config_path, 'r') as f:
+        with config_path.open("r") as f:
             current_config = yaml.load(f)
     except FileNotFoundError as e:
-        logger.error(f'Configuration file not found: {e}')
+        logger.error(f"Configuration file not found: {e}")
         current_config = {}
-    
-    return render_template('edit_config.html', config=current_config)
+
+    return render_template("config.html", config=current_config)
 
 
-@app.route('/recordings/<filename>')
+@app.route("/recordings/<filename>")
 def serve_recording(filename):
-    return send_from_directory(config['recordings_path'], filename)
+    return send_from_directory(str(recordings_path), filename)
 
 
-@app.route('/download-all')
+@app.route("/download-all")
 def download_all():
-    # Erstelle ein Byte-Stream für die ZIP-Datei
     memory_file = io.BytesIO()
-    with zipfile.ZipFile(memory_file, 'w') as zf:
-        for filename in os.listdir(recordings_path):
-            if filename.endswith('.wav'):
-                # Füge jede Datei zum ZIP-Archiv hinzu
-                file_path = os.path.join(recordings_path, filename)
-                zf.write(file_path, arcname=filename)  # arcname = nur der Dateiname in der ZIP
+    with zipfile.ZipFile(memory_file, "w") as zf:
+        wav_files = [f for f in recordings_path.iterdir() if f.suffix == ".wav"]
+        for file_path in wav_files:
+            zf.write(file_path, arcname=file_path.name)
     memory_file.seek(0)
 
-    # Sende die ZIP-Datei an den Benutzer
-    return send_file(memory_file, mimetype='application/zip', as_attachment=True, download_name='recordings.zip')
+    return send_file(
+        memory_file,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name="recordings.zip",
+    )
 
 
-@app.route('/shutdown', methods=['POST'])
+@app.route("/download-selected", methods=["POST"])
+def download_selected():
+    selected_files = request.form.getlist("files[]")
+    memory_file = BytesIO()
+    with zipfile.ZipFile(memory_file, "w") as zf:
+        for filename in selected_files:
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            if os.path.exists(file_path):
+                zf.write(file_path, filename)
+
+    memory_file.seek(0)
+    return send_file(
+        memory_file, download_name="selected_recordings.zip", as_attachment=True
+    )
+
+
+@app.route("/rename/<old_filename>", methods=["POST"])
+def rename_recording(old_filename):
+    new_filename = request.json["newFilename"]
+    old_path = os.path.join(recordings_path, old_filename)
+    new_path = os.path.join(recordings_path, new_filename)
+
+    if os.path.exists(old_path):
+        os.rename(old_path, new_path)
+        return jsonify(success=True)
+    else:
+        return jsonify(success=False), 404
+
+
+@app.route("/shutdown", methods=["POST"])
 def shutdown():
-    """
-    Shuts down the Raspberry Pi system.
-    """
     try:
         os.system("sudo shutdown now")
-        flash('System is shutting down...', 'info')
+        return jsonify({"success": True, "message": "System is shutting down..."})
     except Exception as e:
         logger.error(f"Failed to shut down: {e}")
-        flash('Failed to shut down the system!', 'error')
-    return redirect(url_for('index'))
+        return jsonify(
+            {"success": False, "message": "Failed to shut down the system!"}
+        ), 500
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()  # Runs at port 8000 w/ Gunicorn

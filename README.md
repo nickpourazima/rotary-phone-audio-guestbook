@@ -19,8 +19,17 @@ This project transforms a rotary phone into a voice recorder for use at special 
   - [Software](#software)
     - [audioInterface](#audiointerface)
     - [audioGuestBook](#audioguestbook)
-    - [Web Server](#webserver)
+    - [Web Server](#web-server)
+    - [Contributing](#contributing)
+      - [Development Setup](#development-setup)
+        - [Tailwind CSS Setup](#tailwind-css-setup)
+        - [Syncing Files with Raspberry Pi](#syncing-files-with-raspberry-pi)
+        - [Starting the Web Server in Development Mode](#starting-the-web-server-in-development-mode)
+        - [Python dependencies](#python-dependencies)
+      - [Generating an img for a release](#generating-an-img-for-a-release)
+      - [Debugging](#debugging)
   - [Support](#support)
+  - [Star History](#star-history)
 
 ## Background
 
@@ -222,9 +231,111 @@ To replace:
 - The page will dynamically pull any recording stored in the `/recordings/` directory into a list, and will be updated by refreshing your browser.
 - A fully built .service file can be run automatically in addition to the audioGuestBook. Make sure to copy and paste this service to `/etc/systemd/system` to be able to run it with systemctl.
 
-![image](images/webserver-visual.png)
+**UPDATE**:
+
+  As of release **v1.1** the webserver has been updated with a modern interface using Tailwind CSS to ensure responsiveness and better visual clarity.
+
+  New features include:
+
+- Ability to edit recorded file names directly from the web interface.
+- Bulk/individual/selectable recorded file downloads.
+- Playback recorded files directly on the webserver.
+- Delete recordings.
+![image](images/webserver_home_dark.png)
+- All `config.yaml` params are configurable from the settings page.
+![image](images/webserver_settings_dark_1.png)
+![image](images/webserver_settings_dark_2.png)
+- Dark/light themes.
+![image](images/webserver_home_light.png)
+
+### Contributing
+
+#### Development Setup
+
+For contributors interested in working on the project and testing new features before cutting a release, here’s a brief guide:
+
+- Install node & npm
+
+##### Tailwind CSS Setup
+
+Tailwind CSS is used for styling the web interface. To play around with the source code and style changes, you can use the following commands:
+
+```bash
+# Build Tailwind CSS
+npx tailwindcss build -i static/css/tailwind.css -o static/css/output.css
+```
+
+To further optimize the CSS output for production:
+
+```bash
+# Minify CSS
+npx postcss static/css/output.css > static/css/output.min.css
+```
+
+##### Syncing Files with Raspberry Pi
+
+To upload changes from your local dev machine to the Raspberry Pi (Pi Zero or similar), you can use the following rsync command:
+
+```bash
+# Sync files with Pi
+rsync -av --exclude-from='./rsync-exclude.txt' ${CWD}/rotary-phone-audio-guestbook admin@192.168.x.x:/home/admin
+# Replace 192.168.x.x with the actual IP address of your Raspberry Pi.
+```
+
+##### Starting the Web Server in Development Mode
+
+For testing the Flask-based web server on the Raspberry Pi:
+
+```bash
+# Start webserver on Raspberry Pi
+flask --app webserver/server.py run -h 192.168.x.x -p 8080
+```
+
+##### Python dependencies
+
+I've been using [uv](https://github.com/astral-sh/uv) by @astral-sh, and love it! Would highly recommend as it is extremely fast and much more robust relative to pip.
+
+```bash
+pip3 install uv
+uv pip install -r requirements.txt
+#OR
+uv pip install -r pyproject.toml
+```
+
+Alternatively, to directly run the main audioGuestBook script (this will pull necessary dependencies from pyproject.toml):
+
+```bash
+# Directly run audioGuestBook
+uv run src/audioGuestBook.py
+```
+
+#### Generating an img for a release
+
+I use [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils), thank you to @scruss & @seamusdemora!
+
+Familiarize yourself with the process before starting, it will be way more helpful than just entering these commands blindly.
+
+It's been awhile since I've done this so proceed with caution here:
+
+```bash
+sudo image-backup rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img
+sudo mv rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img /mnt/
+sudo image-backup /mnt/rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img
+md5sum /mnt/rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img
+```
+
+#### Debugging
+
+To help with debugging the `audioGuestBook` service and the webserver, use these commands:
+
+```bash
+# Monitor the audioGuestBook service logs
+watch -n 1 journalctl -u audioGuestBook.service
+```
 
 ## Support
+
+It's great to see this project growing, special thanks to @svartis, @jmdevita, and @Mevel!
 
 If this code helped you or if you have some feedback, I'd be happy to [hear about it](mailto:dillpicholas@duck.com)!
 Feel like saying thanks? You can [buy me a coffee](https://ko-fi.com/dillpicholas)☕.

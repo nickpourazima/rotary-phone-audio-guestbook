@@ -1,0 +1,14 @@
+# rsync-exclude.txt
+uv.lock
+pyproject.toml
+.python-version
+.venv
+.git*
+.trunk
+images
+static/css/output.css
+static/css/tailwind.css
+node_modules
+LICENSE
+README.md
+*.gz
