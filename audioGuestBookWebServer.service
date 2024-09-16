@@ -1,12 +1,13 @@
 [Unit]
-Description=Webserver for Audio Guest Book for Recording Downloads
+Description=Rotary Phone Audio Guestbook Web Server
 After=network.target
 
 [Service]
+User=admin
+Group=admin
 WorkingDirectory=/home/admin/rotary-phone-audio-guestbook
-Type=simple
+ExecStart=/home/admin/rotary-phone-audio-guestbook/start_server.sh
 Restart=always
-ExecStart=/bin/bash -c source .venv/bin/activate && 'IP_ADDRESS=$(/sbin/ip -4 addr show wlan0 | grep -oP "(?<=inet\\s)\\d+(\\.\\d+){3}") && gunicorn -w 1 -b ${IP_ADDRESS}:8000 webserver.server:app'
 
 [Install]
 WantedBy=multi-user.target
