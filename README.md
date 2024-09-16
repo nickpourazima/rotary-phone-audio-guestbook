@@ -233,7 +233,7 @@ To replace:
 
 **UPDATE**:
 
-  As of release **v1.1** the webserver has been updated with a modern interface using Tailwind CSS to ensure responsiveness and better visual clarity.
+  As of [release **v1.0.2**](https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases/tag/v1.0.2) the webserver has been updated with a modern interface using Tailwind CSS to ensure responsiveness and better visual clarity.
 
   New features include:
 
