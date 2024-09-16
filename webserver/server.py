@@ -19,10 +19,10 @@ from flask import (
 )
 from ruamel.yaml import YAML
 
+# Set up logging and app configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set up app and grab configuration path
 app = Flask(__name__, static_url_path="/static", static_folder="./static")
 app.secret_key = "supersecretkey"  # Needed for flashing messages
 config_path = Path(__file__).parent.parent / "config.yaml"
@@ -32,7 +32,7 @@ upload_folder.mkdir(parents=True, exist_ok=True)
 # Initialize ruamel.yaml
 yaml = YAML()
 
-# Attempt to grab recording path within the config.yaml file
+# Attempt to grab recording path from the configuration file
 try:
     with config_path.open("r") as f:
         config = yaml.load(f)
@@ -43,8 +43,8 @@ except FileNotFoundError as e:
 recordings_path = Path(config["recordings_path"])
 
 
-# Function to convert and normalize paths to Unix format
 def normalize_path(path):
+    """Normalize and convert paths to Unix format."""
     return str(path.as_posix())
 
 
@@ -53,14 +53,15 @@ def index():
     return render_template("index.html")
 
 
-# Dynamic file downloader (used for hyperlinks generated above)
-@app.route("/<filename>", methods=["GET", "POST"])
+@app.route("/<filename>", methods=["GET"])
 def download_file(filename):
+    """Download a file dynamically from the recordings folder."""
     return send_from_directory(recordings_path, filename, as_attachment=True)
 
 
 @app.route("/delete/<filename>", methods=["POST"])
 def delete_file(filename):
+    """Delete a specific recording."""
     file_path = recordings_path / filename
     try:
         file_path.unlink()
@@ -73,25 +74,14 @@ def delete_file(filename):
 
 @app.route("/api/recordings")
 def get_recordings():
+    """API route to get a list of all recordings."""
     files = [f.name for f in recordings_path.iterdir() if f.is_file()]
     return jsonify(files)
 
 
-def update_config(form_data):
-    for key, value in form_data.items():
-        if key in config:
-            if isinstance(config[key], int):
-                config[key] = int(value)
-            elif isinstance(config[key], float):
-                config[key] = float(value)
-            elif isinstance(config[key], bool):
-                config[key] = value.lower() == "true"
-            else:
-                config[key] = value
-
-
 @app.route("/config", methods=["GET", "POST"])
 def edit_config():
+    """Handle GET and POST requests to edit the configuration."""
     if request.method == "POST":
         # Handle file uploads
         for field in ["greeting", "beep", "time_exceeded"]:
@@ -112,7 +102,7 @@ def edit_config():
         flash("Configuration updated successfully!", "success")
         return redirect(url_for("edit_config"))
 
-    # Load the current configuration to display in the form
+    # Load the current configuration
     try:
         with config_path.open("r") as f:
             current_config = yaml.load(f)
@@ -125,11 +115,13 @@ def edit_config():
 
 @app.route("/recordings/<filename>")
 def serve_recording(filename):
+    """Serve a specific recording."""
     return send_from_directory(str(recordings_path), filename)
 
 
 @app.route("/download-all")
 def download_all():
+    """Download all recordings as a zip file."""
     memory_file = io.BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
         wav_files = [f for f in recordings_path.iterdir() if f.suffix == ".wav"]
@@ -147,6 +139,7 @@ def download_all():
 
 @app.route("/download-selected", methods=["POST"])
 def download_selected():
+    """Download selected recordings as a zip file."""
     selected_files = request.form.getlist("files[]")
     memory_file = BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
@@ -163,6 +156,7 @@ def download_selected():
 
 @app.route("/rename/<old_filename>", methods=["POST"])
 def rename_recording(old_filename):
+    """Rename a recording."""
     new_filename = request.json["newFilename"]
     old_path = os.path.join(recordings_path, old_filename)
     new_path = os.path.join(recordings_path, new_filename)
@@ -176,6 +170,7 @@ def rename_recording(old_filename):
 
 @app.route("/shutdown", methods=["POST"])
 def shutdown():
+    """Shut down the system."""
     try:
         os.system("sudo shutdown now")
         return jsonify({"success": True, "message": "System is shutting down..."})
@@ -186,5 +181,15 @@ def shutdown():
         ), 500
 
 
-if __name__ == "__main__":
-    app.run()  # Runs at port 8000 w/ Gunicorn
+def update_config(form_data):
+    """Update the YAML configuration with form data."""
+    for key, value in form_data.items():
+        if key in config:
+            if isinstance(config[key], int):
+                config[key] = int(value)
+            elif isinstance(config[key], float):
+                config[key] = float(value)
+            elif isinstance(config[key], bool):
+                config[key] = value.lower() == "true"
+            else:
+                config[key] = value

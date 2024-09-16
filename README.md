@@ -313,15 +313,19 @@ uv run src/audioGuestBook.py
 
 I use [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils), thank you to @scruss & @seamusdemora!
 
-Familiarize yourself with the process before starting, it will be way more helpful than just entering these commands blindly.
+If you would like to create a full image for ease f deployment there's a [`deploy.sh`](deploy.sh) script that I created which will run through this process. Edit the ENV VARS inside to point to your own local dev environment.
 
-It's been awhile since I've done this so proceed with caution here:
+Alternatively, a manual run would look something like this:
 
 ```bash
-sudo image-backup rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img
-sudo mv rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img /mnt/
-sudo image-backup /mnt/rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img
-md5sum /mnt/rpizero_rotary_phone_audio_guestbook_v1.0_imagebackup.img
+sudo image-backup -i /mnt/rpizero_rotary_phone_audio_guestbook_v<insert_incremental_version_number_here>_imagebackup.img
+md5sum /mnt/rpizero_rotary_phone_audio_guestbook_v<version number>_imagebackup.img
+```
+
+**Note**: for incremental backups (much faster) point to the existing img and run:
+
+```sh
+sudo image-backup /mnt/rpizero_rotary_phone_audio_guestbook_v<prior_version_number>_imagebackup.img
 ```
 
 #### Debugging
@@ -330,7 +334,9 @@ To help with debugging the `audioGuestBook` service and the webserver, use these
 
 ```bash
 # Monitor the audioGuestBook service logs
-watch -n 1 journalctl -u audioGuestBook.service
+journalctl -fu audioGuestBook.service
+# OR
+journalctl -fu audioGuestBookWebServer.service
 ```
 
 ## Support

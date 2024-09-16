@@ -3,11 +3,13 @@ click==8.1.7
 colorzero==2.0
 flask==3.0.3
 gpiozero==2.0.1
+gunicorn==23.0.0
 importlib-metadata==4.13.0
 importlib-resources==5.13.0
 itsdangerous==2.2.0
 jinja2==3.1.4
 markupsafe==2.1.5
+packaging==24.1
 ruamel-yaml==0.18.6
 ruamel-yaml-clib==0.2.8
 setuptools==74.1.2

@@ -7,5 +7,6 @@ requires-python = ">=3.9.2"
 dependencies = [
     "flask>=3.0.3",
     "gpiozero>=2.0.1",
+    "gunicorn>=23.0.0",
     "ruamel-yaml>=0.18.6",
 ]

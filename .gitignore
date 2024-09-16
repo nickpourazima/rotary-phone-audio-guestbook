@@ -7,3 +7,4 @@ notes.txt
 recordings/*
 env/
 node_modules
+*.img
