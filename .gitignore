@@ -6,3 +6,5 @@ sounds/voicemail.wav
 notes.txt
 recordings/*
 env/
+node_modules
+*.img

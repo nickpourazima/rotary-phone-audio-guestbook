@@ -1,0 +1,226 @@
+{% extends "base.html" %} {% block title %}Audio Guestbook - Settings{% endblock
+%} {% block content %}
+
+<h1 class="text-3xl font-bold text-center mb-8">Edit Configuration</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %} {% if messages
+%} {% for category, message in messages %}
+<div
+  class="alert alert-{{ category }} bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4"
+  role="alert"
+>
+  {{ message }}
+</div>
+{% endfor %} {% endif %} {% endwith %}
+
+<form method="POST" enctype="multipart/form-data" class="space-y-4">
+  <!-- Audio Settings Card -->
+  <div
+    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8"
+  >
+    <div class="card">
+      <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+        <h2 class="font-bold text-lg text-text dark:text-dark-text">
+          Audio Settings
+        </h2>
+      </div>
+      <div
+        class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b"
+      >
+        {% for field in ['alsa_hw_mapping', 'mixer_control_name', 'format',
+        'file_type', 'channels', 'sample_rate'] %}
+        <div class="mb-2 lg:mb-4">
+          <label for="{{ field }}" class="block mb-1 lg:mb-2"
+            >{{ field|replace('_', ' ')|title }}</label
+          >
+          <input
+            type="text"
+            id="{{ field }}"
+            name="{{ field }}"
+            value="{{ config[field] }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+          />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Audio Files Card -->
+    <div class="card">
+      <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+        <h2 class="font-bold text-lg text-text dark:text-dark-text">
+          Audio Files
+        </h2>
+      </div>
+      <div
+        class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b"
+      >
+        {% for field in ['greeting', 'beep', 'time_exceeded'] %}
+        <div class="mb-2 lg:mb-4">
+          <label for="{{ field }}_file" class="block mb-1 lg:mb-2"
+            >{{ field|title }} File</label
+          >
+          <input
+            type="file"
+            id="{{ field }}_file"
+            name="{{ field }}_file"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+          />
+          <small class="text-gray-600 dark:text-gray-400"
+            >Current file: {{ config[field] }}</small
+          >
+        </div>
+        <div class="mb-2 lg:mb-4">
+          <label for="{{ field }}_volume" class="block mb-1 lg:mb-2"
+            >{{ field|title }} Volume</label
+          >
+          <input
+            type="number"
+            step="0.1"
+            id="{{ field }}_volume"
+            name="{{ field }}_volume"
+            value="{{ config[field + '_volume'] }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+          />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Recording Settings Card -->
+    <div class="card">
+      <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+        <h2 class="font-bold text-lg text-text dark:text-dark-text">
+          Recording Settings
+        </h2>
+      </div>
+      <div
+        class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b"
+      >
+        {% for field in ['recording_limit', 'time_exceeded_length'] %}
+        <div class="mb-2 lg:mb-4">
+          <label for="{{ field }}" class="block mb-1 lg:mb-2"
+            >{{ field|replace('_', ' ')|title }}</label
+          >
+          <input
+            type="number"
+            id="{{ field }}"
+            name="{{ field }}"
+            value="{{ config[field] }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+          />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- GPIO Settings Card -->
+  <div class="card">
+    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+      <h2 class="font-bold text-lg text-text dark:text-dark-text">
+        GPIO Settings
+      </h2>
+    </div>
+    <div
+      class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b"
+    >
+      {% for field in ['hook_gpio', 'hook_type', 'hook_bounce_time',
+      'record_greeting_gpio', 'record_greeting_type',
+      'record_greeting_bounce_time'] %}
+      <div class="mb-2 lg:mb-4">
+        <label for="{{ field }}" class="block mb-1 lg:mb-2"
+          >{{ field|replace('_', ' ')|title }}</label
+        >
+        <input
+          type="text"
+          id="{{ field }}"
+          name="{{ field }}"
+          value="{{ config[field] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+        />
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Shutdown Settings Card -->
+  <div class="card">
+    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+      <h2 class="font-bold text-lg text-text dark:text-dark-text">
+        Shutdown Settings
+      </h2>
+    </div>
+    <div
+      class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b"
+    >
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div>
+          <label for="shutdown_gpio" class="block mb-1 lg:mb-2"
+            >Shutdown GPIO</label
+          >
+          <input
+            type="number"
+            id="shutdown_gpio"
+            name="shutdown_gpio"
+            value="{{ config['shutdown_gpio'] }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+          />
+        </div>
+        <div>
+          <label for="shutdown_button_hold_time" class="block mb-1 lg:mb-2"
+            >Shutdown Button Hold Time (seconds)</label
+          >
+          <input
+            type="number"
+            step="0.1"
+            id="shutdown_button_hold_time"
+            name="shutdown_button_hold_time"
+            value="{{ config['shutdown_button_hold_time'] }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-background text-text dark:text-dark-text"
+          />
+        </div>
+      </div>
+      <div class="mt-2 flex justify-end">
+        <button type="button" id="shutdown-btn" class="btn-danger p-2">
+          <i class="fas fa-power-off"></i> Shutdown
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- Floating Save Button -->
+<div class="bg-primary dark:bg-dark-primary fixed bottom-4 right-4 rounded-full">
+  <button
+    type="submit"
+    form="form-id"
+    class="btn-primary p-3 shadow-lg rounded-full"
+  >
+    <i class="fas fa-save mr-2"></i> Save Configuration
+  </button>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+  document
+    .getElementById("shutdown-btn")
+    .addEventListener("click", function () {
+      if (confirm("Are you sure you want to shut down the system?")) {
+        fetch("/shutdown", { method: "POST" })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert("System is shutting down...");
+            } else {
+              alert("Failed to shut down the system.");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while trying to shut down the system.");
+          });
+      }
+    });
+</script>
+{% endblock %}
