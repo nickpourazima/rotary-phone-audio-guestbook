@@ -170,13 +170,11 @@ class AudioGuestBook:
         """
         Handles the on-hook event to stop and save the recording.
         """
-        # Check that the off-hook event is in progress
-        if self.current_event != CurrentEvent.HOOK:
-            return
-        
-        logger.info("Phone on hook. Ending call and saving recording.")
-        self.current_event = CurrentEvent.NONE # Stop playback and reset current event
-        self.stop_recording_and_playback()
+        if self.current_event == CurrentEvent.HOOK:
+            logger.info("Phone on hook. Ending call and saving recording.")
+            # Stop any ongoing processes before resetting the state
+            self.stop_recording_and_playback()
+            self.current_event = CurrentEvent.NONE
 
     def time_exceeded(self):
         """
@@ -202,7 +200,7 @@ class AudioGuestBook:
         self.record_greeting.when_pressed = self.pressed_record_greeting
         self.record_greeting.when_released = self.released_record_greeting
         
-    def shutdown():
+    def shutdown(self):
         print("System shutting down...")
         os.system("sudo shutdown now")
 
@@ -273,12 +271,18 @@ class AudioGuestBook:
         """
         Stop recording and playback processes.
         """
-        self.audio_interface.stop_recording()
+        # Cancel the timer first to prevent any race conditions
         if hasattr(self, "timer"):
             self.timer.cancel()
+        # Stop recording if it's active
+        self.audio_interface.stop_recording()
+        # Stop playback if the greeting thread is still running
         if hasattr(self, "greeting_thread") and self.greeting_thread.is_alive():
             logger.info("Stopping playback.")
+            self.audio_interface.continue_playback = False
             self.audio_interface.stop_playback()
+            # Wait for the thread to complete
+            self.greeting_thread.join(timeout=1.0)
 
     def run(self):
         """

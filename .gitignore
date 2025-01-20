@@ -8,3 +8,4 @@ recordings/*
 env/
 node_modules
 *.img
+*.gz
