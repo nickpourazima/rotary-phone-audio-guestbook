@@ -110,7 +110,10 @@ class AudioGuestBook:
 
         logger.info("Phone off hook, ready to begin!")
 
-        self.current_event = CurrentEvent.HOOK # Ensure playback can continue
+        # Ensure clean state by forcing stop of any existing processes
+        self.stop_recording_and_playback()
+
+        self.current_event = CurrentEvent.HOOK  # Ensure playback can continue
         # Start the greeting playback in a separate thread
         self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
         self.greeting_thread.start()
@@ -274,15 +277,21 @@ class AudioGuestBook:
         # Cancel the timer first to prevent any race conditions
         if hasattr(self, "timer"):
             self.timer.cancel()
+
         # Stop recording if it's active
         self.audio_interface.stop_recording()
+
         # Stop playback if the greeting thread is still running
         if hasattr(self, "greeting_thread") and self.greeting_thread.is_alive():
             logger.info("Stopping playback.")
             self.audio_interface.continue_playback = False
             self.audio_interface.stop_playback()
-            # Wait for the thread to complete
-            self.greeting_thread.join(timeout=1.0)
+
+            # Wait for the thread to complete with a longer timeout
+            self.greeting_thread.join(timeout=3.0)
+
+            # Force set to None to ensure clean state for next call
+            self.greeting_thread = None
 
     def run(self):
         """

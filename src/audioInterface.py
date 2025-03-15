@@ -188,6 +188,18 @@ class AudioInterface:
                     os.killpg(os.getpgid(self.recording_process.pid), signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+
+                # Additional cleanup - check for any running arecord processes
+                try:
+                    subprocess.run(["pkill", "-f", "arecord"], check=False)
+                except Exception as e:
+                    logger.error(f"Error killing additional arecord processes: {e}")
             finally:
                 self.recording_process = None
                 logger.info("Recording stopped.")
+        else:
+            # Extra sanity check - kill any rogue arecord processes
+            try:
+                subprocess.run(["pkill", "-f", "arecord"], check=False)
+            except Exception:
+                pass
