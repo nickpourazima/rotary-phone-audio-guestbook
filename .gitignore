@@ -9,3 +9,4 @@ env/
 node_modules
 *.img
 *.gz
+*.egg-info/

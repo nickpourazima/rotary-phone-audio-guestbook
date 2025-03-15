@@ -12,6 +12,7 @@ from flask import (
     jsonify,
     redirect,
     render_template,
+    Response,
     request,
     send_file,
     send_from_directory,
@@ -115,8 +116,19 @@ def edit_config():
 
 @app.route("/recordings/<filename>")
 def serve_recording(filename):
-    """Serve a specific recording."""
-    return send_from_directory(str(recordings_path), filename)
+    """Serve a specific recording with proper streaming."""
+
+    def generate():
+        file_path = recordings_path / filename
+        with open(file_path, "rb") as f:
+            chunk = f.read(4096)
+            while chunk:
+                yield chunk
+                chunk = f.read(4096)
+
+    return Response(
+        generate(), mimetype="audio/wav", headers={"Accept-Ranges": "bytes"}
+    )
 
 
 @app.route("/download-all")
