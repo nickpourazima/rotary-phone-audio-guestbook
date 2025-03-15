@@ -1,6 +1,4 @@
 # rsync-exclude.txt
-uv.lock
-pyproject.toml
 .python-version
 .venv
 .git*
