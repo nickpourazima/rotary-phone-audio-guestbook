@@ -13,7 +13,12 @@
 </div>
 {% endfor %} {% endif %} {% endwith %}
 
-<form id="form-id" method="POST" enctype="multipart/form-data" class="space-y-4">
+<form
+  id="form-id"
+  method="POST"
+  enctype="multipart/form-data"
+  class="space-y-4"
+>
   <!-- Audio Settings Card -->
   <div
     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8"
@@ -144,7 +149,7 @@
     </div>
   </div>
 
-  <!-- Shutdown Settings Card -->
+  <!-- Reboot/Shutdown Settings Card -->
   <div class="card">
     <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
       <h2 class="font-bold text-lg text-text dark:text-dark-text">
@@ -181,7 +186,10 @@
           />
         </div>
       </div>
-      <div class="mt-2 flex justify-end">
+      <div class="mt-2 flex justify-end space-x-4">
+        <button type="button" id="reboot-btn" class="btn-warning p-2">
+          <i class="fas fa-sync-alt"></i> Reboot
+        </button>
         <button type="button" id="shutdown-btn" class="btn-danger p-2">
           <i class="fas fa-power-off"></i> Shutdown
         </button>
@@ -191,7 +199,9 @@
 </form>
 
 <!-- Floating Save Button -->
-<div class="bg-primary dark:bg-dark-primary fixed bottom-4 right-4 rounded-full">
+<div
+  class="bg-primary dark:bg-dark-primary fixed bottom-4 right-4 rounded-full"
+>
   <button
     type="submit"
     form="form-id"
@@ -222,5 +232,22 @@
           });
       }
     });
+  document.getElementById("reboot-btn").addEventListener("click", function () {
+    if (confirm("Are you sure you want to reboot the system?")) {
+      fetch("/reboot", { method: "POST" })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("System is rebooting...");
+          } else {
+            alert("Failed to reboot the system.");
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("An error occurred while trying to reboot the system.");
+        });
+    }
+  });
 </script>
 {% endblock %}

@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
+
+@layer components {
+  .btn-danger {
+    @apply bg-red-600 text-white rounded hover:bg-red-700 transition-colors;
+  }
+
+  .btn-warning {
+    @apply bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-accent dark:bg-dark-accent text-white rounded hover:bg-accent/80 hover:dark:bg-dark-accent/80 transition-colors;
+  }
+
+  .space-x-4 > * + * {
+    @apply ml-4;
+  }
+}
+
 @tailwind utilities;

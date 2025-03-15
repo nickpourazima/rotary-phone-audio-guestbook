@@ -180,6 +180,18 @@ def rename_recording(old_filename):
         return jsonify(success=False), 404
 
 
+@app.route("/reboot", methods=["POST"])
+def reboot():
+    """Reboot the system."""
+    try:
+        os.system("sudo reboot now")
+        return jsonify({"success": True, "message": "System is rebooting..."})
+    except Exception as e:
+        logger.error(f"Failed to reboot: {e}")
+        return jsonify(
+            {"success": False, "message": "Failed to reboot the system!"}
+        ), 500
+
 @app.route("/shutdown", methods=["POST"])
 def shutdown():
     """Shut down the system."""
