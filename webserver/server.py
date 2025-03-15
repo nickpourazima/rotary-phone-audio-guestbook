@@ -137,9 +137,25 @@ def download_all():
     memory_file = io.BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
         wav_files = [f for f in recordings_path.iterdir() if f.suffix == ".wav"]
+
+        # Log the files being added to the zip
+        logger.info(f"Adding {len(wav_files)} files to zip")
+
         for file_path in wav_files:
-            zf.write(file_path, arcname=file_path.name)
+            # Use absolute path for reading
+            abs_path = str(file_path.absolute())
+            logger.info(f"Adding file: {abs_path}")
+
+            # Verify file exists and is readable
+            if os.path.exists(abs_path) and os.access(abs_path, os.R_OK):
+                # Add to zip with just the filename as the internal path
+                zf.write(abs_path, arcname=file_path.name)
+            else:
+                logger.error(f"Cannot access file: {abs_path}")
+
     memory_file.seek(0)
+
+    logger.info(f"Zip file size: {memory_file.getbuffer().nbytes} bytes")
 
     return send_file(
         memory_file,
@@ -153,16 +169,26 @@ def download_all():
 def download_selected():
     """Download selected recordings as a zip file."""
     selected_files = request.form.getlist("files[]")
+    logger.info(f"Selected files for download: {selected_files}")
+
     memory_file = BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
         for filename in selected_files:
-            file_path = os.path.join(upload_folder, filename)
-            if os.path.exists(file_path):
+            file_path = os.path.join(recordings_path, filename)
+            if os.path.exists(file_path) and os.access(file_path, os.R_OK):
+                logger.info(f"Adding to zip: {file_path}")
                 zf.write(file_path, filename)
+            else:
+                logger.error(f"Cannot access file: {file_path}")
 
     memory_file.seek(0)
+    logger.info(f"Zip file size: {memory_file.getbuffer().nbytes} bytes")
+
     return send_file(
-        memory_file, download_name="selected_recordings.zip", as_attachment=True
+        memory_file,
+        mimetype="application/zip",
+        download_name="selected_recordings.zip",
+        as_attachment=True,
     )
 
 
@@ -191,6 +217,7 @@ def reboot():
         return jsonify(
             {"success": False, "message": "Failed to reboot the system!"}
         ), 500
+
 
 @app.route("/shutdown", methods=["POST"])
 def shutdown():

@@ -9,6 +9,17 @@ function loadRecordings() {
         recordingList.appendChild(item);
       });
       setupEventListeners();
+
+      // Ensure all elements are properly visible
+      console.log("Recordings loaded: " + files.length);
+      document.querySelectorAll(".delete-button").forEach(btn => {
+        console.log("Delete button styled");
+        btn.style.display = "flex";
+        btn.style.visibility = "visible";
+      });
+    })
+    .catch(error => {
+      console.error("Error loading recordings:", error);
     });
 }
 
@@ -25,13 +36,13 @@ function createRecordingItem(filename) {
       <td class="p-2"><span contenteditable="true" class="recording-name font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 p-1">${filename}</span></td>
       <td class="p-2">
         <audio controls class="w-48">
-          <source src="/recordings/${filename}" type="audio/mpeg">
+          <source src="/recordings/${filename}" type="audio/wav">
         </audio>
       </td>
       <td class="p-2 recording-date text-sm text-gray-600 dark:text-gray-400">${formattedDate}</td>
       <td class="p-2">
-        <button class="delete-button bg-red-500 text-white rounded px-2 py-1">
-          <i class="fas fa-trash"></i>
+        <button class="delete-button bg-red-500 hover:bg-red-600 text-white rounded px-2 py-1 flex items-center">
+          <span class="delete-icon">🗑️</span> Delete
         </button>
       </td>
     `;

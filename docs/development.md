@@ -4,8 +4,28 @@ For contributors interested in working on the project and testing new features b
 
 ## Prerequisites
 
-- Install node & npm
 - Python 3.9.2 or higher
+- Raspberry Pi OS with necessary system dependencies
+
+### System Dependencies
+
+Install these system-level packages required for building Python extensions:
+
+```bash
+# Required system packages for development
+sudo apt-get update
+sudo apt-get install libffi-dev
+```
+
+The libffi-dev package provides necessary header files for compiling Python packages with C extensions, including gevent which improves web server performance.
+
+### Node.js and npm
+
+Install Node.js and npm for frontend development:
+
+```bash
+sudo apt-get install npm
+```
 
 ## Python Dependencies Management
 
@@ -46,20 +66,39 @@ Alternatively, to directly run the main audioGuestBook script:
 uv run src/audioGuestBook.py
 ```
 
-## Tailwind CSS Setup
+### Installing Gevent
 
-Tailwind CSS is used for styling the web interface. To play around with the source code and style changes, you can use the following commands:
+For better web server performance, install gevent:
+
+```bash
+uv pip install gevent
+```
+
+## Frontend Development with Tailwind CSS
+
+Tailwind CSS is used for styling the web interface. To set up the frontend build process:
+
+```bash
+# Install required npm packages
+npm install -D tailwindcss postcss autoprefixer cssnano
+```
+
+### Building and Optimizing CSS
+
+For development, build the CSS files:
 
 ```bash
 # Build Tailwind CSS
-npx tailwindcss build -i static/css/tailwind.css -o static/css/output.css
+npx tailwindcss -i webserver/static/css/tailwind.css -o webserver/static/css/output.css
 ```
 
-To further optimize the CSS output for production:
+For production, optimize and minify the CSS:
 
 ```bash
-# Minify CSS
-npx postcss static/css/output.css > static/css/output.min.css
+# Generate optimized CSS by removing unused styles
+npx tailwindcss -i webserver/static/css/tailwind.css -o webserver/static/css/output.css
+# Further minify CSS to reduce file size
+npx postcss webserver/static/css/output.css -o webserver/static/css/output.min.css
 ```
 
 ## Streaming Audio Support

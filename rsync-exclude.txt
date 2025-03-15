@@ -6,8 +6,6 @@ pyproject.toml
 .git*
 .trunk
 images
-static/css/output.css
-static/css/tailwind.css
 node_modules
 LICENSE
 README.md
