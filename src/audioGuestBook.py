@@ -20,10 +20,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 Device.pin_factory = RPiGPIOFactory()
 
+
 class CurrentEvent(Enum):
     NONE = 0
     HOOK = 1
     RECORD_GREETING = 2
+
 
 class AudioGuestBook:
     """
@@ -47,13 +49,15 @@ class AudioGuestBook:
         """
         self.config_path = config_path
         self.config = self.load_config()
-        
+
         # Check if the recordings folder exists, if not, create it.
         recordings_path = Path(self.config["recordings_path"])
         if not recordings_path.exists():
-            logger.info(f"Recordings folder does not exist. Creating folder: {recordings_path}")
+            logger.info(
+                f"Recordings folder does not exist. Creating folder: {recordings_path}"
+            )
             recordings_path.mkdir(parents=True, exist_ok=True)
-        
+
         self.audio_interface = AudioInterface(
             alsa_hw_mapping=self.config["alsa_hw_mapping"],
             format=self.config["format"],
@@ -63,8 +67,7 @@ class AudioGuestBook:
             channels=self.config["channels"],
             mixer_control_name=self.config["mixer_control_name"],
         )
-        
-        
+
         self.setup_hook()
         self.setup_record_greeting()
         self.setup_shutdown_button()
@@ -118,11 +121,11 @@ class AudioGuestBook:
         self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
         self.greeting_thread.start()
 
-    def start_recording(self, output_file: str):        
+    def start_recording(self, output_file: str):
         """
         Starts the audio recording process and sets a timer for time exceeded event.
         """
-                      
+
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")
 
@@ -199,25 +202,25 @@ class AudioGuestBook:
             return
         pull_up = self.config["record_greeting_type"] == "NC"
         bounce_time = self.config["record_greeting_bounce_time"]
-        self.record_greeting = Button(record_greeting_gpio, pull_up=pull_up, bounce_time=bounce_time)
+        self.record_greeting = Button(
+            record_greeting_gpio, pull_up=pull_up, bounce_time=bounce_time
+        )
         self.record_greeting.when_pressed = self.pressed_record_greeting
         self.record_greeting.when_released = self.released_record_greeting
-        
+
     def shutdown(self):
         print("System shutting down...")
         os.system("sudo shutdown now")
 
-        
     def setup_shutdown_button(self):
         shutdown_gpio = self.config["shutdown_gpio"]
         if shutdown_gpio == 0:
             logger.info("no shutdown button declared, skipping button init")
             return
         hold_time = self.config["shutdown_button_hold_time"] == 2
-        self.shutdown_button =  Button(shutdown_gpio, pull_up=True, hold_time=hold_time)
+        self.shutdown_button = Button(shutdown_gpio, pull_up=True, hold_time=hold_time)
         self.shutdown_button.when_held = self.shutdown
-    
-    
+
     def pressed_record_greeting(self):
         """
         Handles the record greeting to start recording a new greeting message.
@@ -229,7 +232,9 @@ class AudioGuestBook:
 
         logger.info("Record greeting pressed, ready to begin!")
 
-        self.current_event = CurrentEvent.RECORD_GREETING # Ensure record greeting can continue
+        self.current_event = (
+            CurrentEvent.RECORD_GREETING
+        )  # Ensure record greeting can continue
         # Start the record greeting in a separate thread
         self.greeting_thread = threading.Thread(target=self.beep_and_record_greeting)
         self.greeting_thread.start()
@@ -241,9 +246,9 @@ class AudioGuestBook:
         # Check that the record greeting event is in progress
         if self.current_event != CurrentEvent.RECORD_GREETING:
             return
-        
+
         logger.info("Record greeting released. Save the greeting.")
-        self.current_event = CurrentEvent.NONE # Stop playback and reset current event
+        self.current_event = CurrentEvent.NONE  # Stop playback and reset current event
         self.stop_recording_and_playback()
 
     def beep_and_record_greeting(self):
@@ -251,7 +256,9 @@ class AudioGuestBook:
         Plays the beep and start recording a new greeting message #, checking for the button event.
         """
 
-        self.audio_interface.continue_playback = self.current_event == CurrentEvent.RECORD_GREETING
+        self.audio_interface.continue_playback = (
+            self.current_event == CurrentEvent.RECORD_GREETING
+        )
 
         # Play the beep
         if self.current_event == CurrentEvent.RECORD_GREETING:
@@ -262,12 +269,10 @@ class AudioGuestBook:
                 self.config["beep_start_delay"],
             )
 
-        # Check if the record greeting message button is still pressed      
+        # Check if the record greeting message button is still pressed
         if self.current_event == CurrentEvent.RECORD_GREETING:
-            path = str(
-                Path(self.config["greeting"])
-            )
-            # Start recording new greeting message       
+            path = str(Path(self.config["greeting"]))
+            # Start recording new greeting message
             self.start_recording(path)
 
     def stop_recording_and_playback(self):
@@ -300,7 +305,6 @@ class AudioGuestBook:
         logger.info("System ready. Lift the handset to start.")
         pause()
 
- 
 
 if __name__ == "__main__":
     CONFIG_PATH = Path(__file__).parent / "../config.yaml"

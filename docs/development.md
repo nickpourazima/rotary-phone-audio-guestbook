@@ -89,16 +89,18 @@ For development, build the CSS files:
 
 ```bash
 # Build Tailwind CSS
-npx tailwindcss -i webserver/static/css/tailwind.css -o webserver/static/css/output.css
+cd webserver
+npx tailwindcss -i static/css/tailwind.css -o static/css/output.css
 ```
 
 For production, optimize and minify the CSS:
 
 ```bash
 # Generate optimized CSS by removing unused styles
-npx tailwindcss -i webserver/static/css/tailwind.css -o webserver/static/css/output.css
+cd webserver
+npx tailwindcss -i static/css/tailwind.css -o static/css/output.css
 # Further minify CSS to reduce file size
-npx postcss webserver/static/css/output.css -o webserver/static/css/output.min.css
+npx postcss static/css/output.css -o static/css/output.min.css
 ```
 
 ## Streaming Audio Support

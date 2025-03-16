@@ -4,45 +4,140 @@ function loadRecordings() {
     .then((files) => {
       const recordingList = document.getElementById("recording-list");
       recordingList.innerHTML = "";
-      files.forEach((filename) => {
-        const item = createRecordingItem(filename);
-        recordingList.appendChild(item);
-      });
+
+      if (files.length === 0) {
+        // Display an empty state message
+        const emptyRow = document.createElement("tr");
+        emptyRow.innerHTML = `
+          <td colspan="5" class="py-8 text-center">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-microphone-slash text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
+              <p class="text-gray-500 dark:text-gray-400">No recordings yet.</p>
+              <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Recordings will appear here when created.</p>
+            </div>
+          </td>
+        `;
+        recordingList.appendChild(emptyRow);
+
+        // Hide the download button when there are no recordings
+        document.getElementById("download-selected").classList.add("hidden");
+      } else {
+        // Show the download button when there are recordings
+        document.getElementById("download-selected").classList.remove("hidden");
+
+        // Add recording items
+        files.forEach((filename) => {
+          const item = createRecordingItem(filename);
+          recordingList.appendChild(item);
+        });
+      }
+
       setupEventListeners();
 
-      // Ensure all elements are properly visible
-      console.log("Recordings loaded: " + files.length);
-      document.querySelectorAll(".delete-button").forEach(btn => {
-        console.log("Delete button styled");
-        btn.style.display = "flex";
-        btn.style.visibility = "visible";
+      // Initialize Plyr for all audio elements
+      const players = Array.from(document.querySelectorAll('audio')).map(p => {
+        // Ensure audio elements are set up for proper loading
+        p.preload = "metadata";
+
+        // Create and configure the Plyr instance
+        const player = new Plyr(p, {
+          controls: ['play', 'progress', 'current-time', 'duration'],
+          displayDuration: true,
+          hideControls: false,
+          invertTime: false,
+          toggleInvert: false,
+          seekTime: 5,
+          tooltips: { controls: true, seek: true },
+          // Plyr settings to improve seeking behavior
+          fullscreen: { enabled: false },
+          seekTime: 1,
+          keyboard: { focused: true, global: false }
+        });
+
+        // Handle special events for better Chrome compatibility
+        player.on('loadedmetadata', () => {
+          console.log(`Player loaded metadata, duration: ${p.duration}`);
+        });
+
+        player.on('error', (error) => {
+          console.error('Player error:', error);
+        });
+
+        return player;
       });
+
+      improveAudioDurationDetection();
+
+      console.log(`Initialized ${players.length} Plyr players`);
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("Error loading recordings:", error);
+      showToast("Failed to load recordings.", "error");
     });
+}
+
+function improveAudioDurationDetection() {
+  document.querySelectorAll('audio').forEach(audio => {
+    // For WAV files specifically
+    if (audio.src.toLowerCase().endsWith('.wav')) {
+      // Try to force metadata loading
+      audio.addEventListener('loadedmetadata', () => {
+        // If duration is infinity or unusually small, try to fix it
+        if (!isFinite(audio.duration) || audio.duration < 0.1) {
+          console.log('Attempting to fix infinite duration for WAV file...');
+
+          // Force a tiny play/pause to get Chrome to recalculate
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              setTimeout(() => {
+                audio.pause();
+                console.log(`New duration after fix: ${audio.duration}`);
+              }, 10);
+            }).catch(err => {
+              console.warn('Play attempt to fix duration failed:', err);
+            });
+          }
+        }
+      });
+
+      // Add error handling
+      audio.addEventListener('error', (e) => {
+        console.error('Audio error:', e);
+      });
+    }
+  });
 }
 
 function createRecordingItem(filename) {
   const row = document.createElement("tr");
   row.className =
-    "recording-item border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800";
+    "recording-item border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200";
 
   const dateTime = parseDateTime(filename);
   const formattedDate = moment(dateTime).format("MMMM D, YYYY [at] h:mm A");
 
+  // Generate a random pastel color for the recording icon
+  const hue = Math.floor(Math.random() * 360);
+  const iconColor = `hsl(${hue}, 70%, 80%)`;
+
   row.innerHTML = `
-      <td class="p-2"><input type="checkbox" class="recording-checkbox"></td>
-      <td class="p-2"><span contenteditable="true" class="recording-name font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 p-1">${filename}</span></td>
+      <td class="p-2 text-center"><input type="checkbox" class="recording-checkbox w-4 h-4"></td>
       <td class="p-2">
-        <audio controls class="w-48">
-          <source src="/recordings/${filename}" type="audio/wav">
-        </audio>
+        <div class="flex items-center">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3" style="background-color: ${iconColor}">
+            <i class="fas fa-microphone text-white"></i>
+          </div>
+          <span contenteditable="true" class="recording-name font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded">${filename}</span>
+        </div>
+      </td>
+      <td class="p-2">
+        <audio class="audio-player" src="/recordings/${filename}"></audio>
       </td>
       <td class="p-2 recording-date text-sm text-gray-600 dark:text-gray-400">${formattedDate}</td>
       <td class="p-2">
-        <button class="delete-button bg-red-500 hover:bg-red-600 text-white rounded px-2 py-1 flex items-center">
-          <span class="delete-icon">🗑️</span> Delete
+        <button class="delete-button bg-red-500 hover:bg-red-600 text-white rounded-md px-3 py-2 flex items-center transition-colors duration-200 shadow-sm">
+          <i class="fas fa-times mr-1"></i><span class="hidden sm:inline">Delete</span>
         </button>
       </td>
     `;
@@ -101,6 +196,10 @@ function setupEventListeners() {
   recordingItems.forEach((item) => {
     item.addEventListener("click", function (e) {
       if (e.target.type === "checkbox") return; // Don't toggle selection when clicking the checkbox
+      if (e.target.closest('.plyr')) return; // Don't toggle selection when clicking the player
+      if (e.target.closest('.delete-button')) return; // Don't toggle selection when clicking delete
+      if (e.target.classList.contains('recording-name')) return; // Don't toggle when clicking the name
+
       const checkbox = this.querySelector(".recording-checkbox");
       checkbox.checked = !checkbox.checked;
       this.classList.toggle("selected", checkbox.checked);
@@ -140,7 +239,8 @@ function setupEventListeners() {
 
   // Handle click-to-delete for desktop users
   document.querySelectorAll(".delete-button").forEach((button) => {
-    button.addEventListener("click", function () {
+    button.addEventListener("click", function (e) {
+      e.stopPropagation(); // Prevent row click event
       const item = button.closest(".recording-item");
       if (
         confirm(`Are you sure you want to delete ${item.dataset.filename}?`)
@@ -189,4 +289,7 @@ function isMobileDevice() {
   return /Mobi|Android/i.test(navigator.userAgent);
 }
 
-document.addEventListener("DOMContentLoaded", loadRecordings);
+// Initialize recordings on page load
+document.addEventListener("DOMContentLoaded", function () {
+  loadRecordings();
+});

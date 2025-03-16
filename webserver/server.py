@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import re
 import sys
 import zipfile
 from io import BytesIO
@@ -84,24 +85,32 @@ def get_recordings():
 def edit_config():
     """Handle GET and POST requests to edit the configuration."""
     if request.method == "POST":
-        # Handle file uploads
-        for field in ["greeting", "beep", "time_exceeded"]:
-            if f"{field}_file" in request.files:
-                file = request.files[f"{field}_file"]
-                if file.filename:
-                    file_path = upload_folder / file.filename
-                    file.save(file_path)
-                    config[field] = normalize_path(
-                        file_path.relative_to(config_path.parent)
-                    )
+        logger.info("Form data received:")
+        for key, value in request.form.items():
+            logger.info(f"  {key}: {value}")
+        try:
+            # Handle file uploads
+            for field in ["greeting", "beep", "time_exceeded"]:
+                if f"{field}_file" in request.files:
+                    file = request.files[f"{field}_file"]
+                    if file.filename:
+                        file_path = upload_folder / file.filename
+                        file.save(file_path)
+                        config[field] = normalize_path(
+                            file_path.relative_to(config_path.parent)
+                        )
 
-        update_config(request.form)
+            update_config(request.form)
 
-        with config_path.open("w") as f:
-            yaml.dump(config, f)
+            with config_path.open("w") as f:
+                yaml.dump(config, f)
 
-        flash("Configuration updated successfully!", "success")
-        return redirect(url_for("edit_config"))
+            flash("Configuration updated successfully!", "success")
+            return redirect(url_for("edit_config"))
+        except Exception as e:
+            logger.error(f"Error updating configuration: {e}")
+            flash(f"Error updating configuration: {str(e)}", "error")
+            # Continue with current configuration but show error
 
     # Load the current configuration
     try:
@@ -116,19 +125,67 @@ def edit_config():
 
 @app.route("/recordings/<filename>")
 def serve_recording(filename):
-    """Serve a specific recording with proper streaming."""
+    """Serve a specific recording with proper streaming and range support."""
+    file_path = os.path.join(recordings_path, filename)
 
-    def generate():
-        file_path = recordings_path / filename
-        with open(file_path, "rb") as f:
-            chunk = f.read(4096)
-            while chunk:
-                yield chunk
-                chunk = f.read(4096)
+    # Get file size for range requests
+    file_size = os.path.getsize(file_path)
 
-    return Response(
-        generate(), mimetype="audio/wav", headers={"Accept-Ranges": "bytes"}
+    # Parse Range header
+    range_header = request.headers.get('Range', None)
+
+    if range_header:
+        # Parse the range header
+        byte1, byte2 = 0, None
+        match = re.search(r'(\d+)-(\d*)', range_header)
+        groups = match.groups()
+
+        if groups[0]:
+            byte1 = int(groups[0])
+        if groups[1]:
+            byte2 = int(groups[1])
+
+        if byte2 is None:
+            byte2 = file_size - 1
+
+        length = byte2 - byte1 + 1
+
+        # Create the response with the proper headers for range request
+        resp = Response(
+            generate_file_chunks(file_path, byte1, byte2),
+            status=206,
+            mimetype='audio/wav',
+            direct_passthrough=True
+        )
+
+        resp.headers.add('Content-Range', f'bytes {byte1}-{byte2}/{file_size}')
+        resp.headers.add('Accept-Ranges', 'bytes')
+        resp.headers.add('Content-Length', str(length))
+        return resp
+
+    # If no range header, serve the whole file
+    resp = Response(
+        generate_file_chunks(file_path, 0, file_size - 1),
+        mimetype='audio/wav'
     )
+    resp.headers.add('Accept-Ranges', 'bytes')
+    resp.headers.add('Content-Length', str(file_size))
+    return resp
+
+def generate_file_chunks(file_path, byte1=0, byte2=None):
+    """Generator to stream file in chunks with range support."""
+    with open(file_path, 'rb') as f:
+        f.seek(byte1)
+        while True:
+            buffer_size = 8192
+            if byte2:
+                buffer_size = min(buffer_size, byte2 - f.tell() + 1)
+                if buffer_size <= 0:
+                    break
+            chunk = f.read(buffer_size)
+            if not chunk:
+                break
+            yield chunk
 
 
 @app.route("/download-all")
@@ -235,12 +292,59 @@ def shutdown():
 def update_config(form_data):
     """Update the YAML configuration with form data."""
     for key, value in form_data.items():
-        if key in config:
-            if isinstance(config[key], int):
+        # Skip CSRF token if it exists
+        if key == 'csrf_token':
+            continue
+
+        # Check if key exists in config
+        if key not in config:
+            logger.warning(f"Form field '{key}' not found in config, skipping")
+            continue
+
+        # Log the conversion attempt
+        logger.info(f"Updating '{key}': {config[key]} (type: {type(config[key]).__name__}) → '{value}'")
+
+        try:
+            # Convert value based on the type in config
+            if isinstance(config[key], bool):
+                # Convert string to boolean
+                new_value = (value.lower() == "true")
+                logger.info(f"Converting to boolean: {value} → {new_value}")
+                config[key] = new_value
+            elif isinstance(config[key], int):
                 config[key] = int(value)
             elif isinstance(config[key], float):
                 config[key] = float(value)
-            elif isinstance(config[key], bool):
-                config[key] = value.lower() == "true"
             else:
                 config[key] = value
+
+            # Verify the conversion worked
+            logger.info(f"Updated '{key}' to: {config[key]} (type: {type(config[key]).__name__})")
+
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to update '{key}': {e}")
+
+
+@app.route("/api/system-status")
+def system_status():
+    """Return basic system information for the dashboard."""
+    try:
+        import psutil
+
+        cpu_usage = psutil.cpu_percent()
+        memory_usage = psutil.virtual_memory().percent
+        disk_usage = psutil.disk_usage("/").percent
+        recording_count = len([f for f in recordings_path.iterdir() if f.is_file()])
+
+        return jsonify(
+            {
+                "success": True,
+                "cpu": cpu_usage,
+                "memory": memory_usage,
+                "disk": disk_usage,
+                "recordings": recording_count,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
