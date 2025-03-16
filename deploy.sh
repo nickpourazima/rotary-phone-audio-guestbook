@@ -5,8 +5,10 @@ SERVICE_FILES_DIR="." # Location of your .service files
 SYSTEMD_DIR="/etc/systemd/system"
 DEV_MACHINE_USER="<insert your user name>"
 DEV_MACHINE_IP="192.168.xx.xx"
-DEV_MACHINE_DESTINATION="/home/${DEV_MACHINE_USER}/Desktop"
-IMG_BACKUP_NAME="rpizero_rotary_phone_audio_guestbook_v1.1_imagebackup.img"
+DEV_MACHINE_ROOT="/mnt/c/Users/${DEV_MACHINE_USER}"
+DEV_MACHINE_DESTINATION="${DEV_MACHINE_ROOT}/github/rotary-phone-audio-guestbook/backup"
+IMG_VERSION="v1.0.3"
+IMG_BACKUP_NAME="rpizero_rotary_phone_audio_guestbook_${IMG_VERSION}_imagebackup.img"
 IMG_PATH="/mnt/${IMG_BACKUP_NAME}"
 
 echo "=== Starting Deploy Script ==="
