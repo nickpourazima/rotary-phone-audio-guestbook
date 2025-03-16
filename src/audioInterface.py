@@ -1,4 +1,5 @@
 import logging
+import os
 import signal
 import subprocess
 import time
@@ -54,6 +55,7 @@ class AudioInterface:
         self.recording_process = None
         self.playback_process = None
         self.mixer_control_name = mixer_control_name
+        self.continue_playback = True
 
     def set_volume(self, volume_percentage):
         """
@@ -176,10 +178,28 @@ class AudioInterface:
         Stops the ongoing audio recording process.
         """
         if self.recording_process:
-            self.recording_process.terminate()
             try:
+                # Send SIGTERM to the process group
+                os.killpg(os.getpgid(self.recording_process.pid), signal.SIGTERM)
                 self.recording_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                # Force kill if not exited
-                self.recording_process.kill()
-            logger.info("Recording stopped.")
+            except (subprocess.TimeoutExpired, ProcessLookupError):
+                # Force kill if not exited or process not found
+                try:
+                    os.killpg(os.getpgid(self.recording_process.pid), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+
+                # Additional cleanup - check for any running arecord processes
+                try:
+                    subprocess.run(["pkill", "-f", "arecord"], check=False)
+                except Exception as e:
+                    logger.error(f"Error killing additional arecord processes: {e}")
+            finally:
+                self.recording_process = None
+                logger.info("Recording stopped.")
+        else:
+            # Extra sanity check - kill any rogue arecord processes
+            try:
+                subprocess.run(["pkill", "-f", "arecord"], check=False)
+            except Exception:
+                pass

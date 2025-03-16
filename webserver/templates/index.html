@@ -8,7 +8,7 @@
 <h1 class="text-3xl font-bold text-center mb-8">Available Recordings</h1>
 
 <div class="flex justify-end items-center mb-6">
-  <button id="download-selected" class="btn-primary">
+  <button id="download-selected" class="bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md px-4 py-2 flex items-center shadow-sm transition-colors duration-200">
     <i class="fas fa-download mr-2"></i>Download Selected
   </button>
 </div>
@@ -16,17 +16,17 @@
 <div class="overflow-x-auto">
   <table class="w-full">
     <thead>
-      <tr class="bg-primary dark:bg-dark-primary text-text dark:text-dark-text">
-        <th class="p-2 w-12">
-          <input type="checkbox" id="select-all" class="mr-2" />
+      <tr class="bg-primary dark:bg-dark-primary text-text dark:text-dark-text rounded-t-lg overflow-hidden">
+        <th class="p-3 w-12 text-center">
+          <input type="checkbox" id="select-all" class="w-4 h-4" />
         </th>
-        <th class="p-2 text-left">Filename</th>
-        <th class="p-2 text-left">Audio</th>
-        <th class="p-2 text-left">Date</th>
-        <th class="p-2 w-12"></th>
+        <th class="p-3 text-left font-semibold">Filename</th>
+        <th class="p-3 text-left font-semibold">Audio</th>
+        <th class="p-3 text-left font-semibold">Date</th>
+        <th class="p-3 w-24 text-right font-semibold">Actions</th>
       </tr>
     </thead>
-    <tbody id="recording-list">
+    <tbody id="recording-list" class="divide-y divide-gray-200 dark:divide-gray-700">
       <!-- Recordings will be dynamically inserted here -->
     </tbody>
   </table>

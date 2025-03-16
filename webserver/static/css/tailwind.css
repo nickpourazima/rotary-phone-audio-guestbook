@@ -1,3 +1,318 @@
 @tailwind base;
 @tailwind components;
+
+/* Button Components */
+@layer components {
+  .btn-danger {
+    @apply bg-red-600 text-white rounded hover:bg-red-700 transition-colors;
+  }
+
+  .btn-warning {
+    @apply bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-accent dark:bg-dark-accent text-white rounded hover:bg-accent/80 hover:dark:bg-dark-accent/80 transition-colors;
+  }
+
+  /* Modern button styles */
+  .btn-modern {
+    @apply px-4 py-2 rounded-md shadow-sm font-medium transition-colors duration-200;
+  }
+
+  .btn-modern-primary {
+    @apply btn-modern bg-blue-500 hover:bg-blue-600 text-white;
+  }
+
+  .btn-modern-danger {
+    @apply btn-modern bg-red-500 hover:bg-red-600 text-white;
+  }
+
+  /* Table styling improvements */
+  .table-header {
+    @apply bg-primary dark:bg-dark-primary text-text dark:text-dark-text p-3 font-semibold;
+  }
+
+  .table-row {
+    @apply border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+  }
+
+  .space-x-4>*+* {
+    @apply ml-4;
+  }
+}
+
 @tailwind utilities;
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* ========== IMPROVED DARK MODE THEME ========== */
+/* Dark Mode Background Colors */
+.dark .bg-dark-background {
+  background-color: #171923 !important;
+}
+
+.dark .bg-dark-primary {
+  background-color: #2D3748 !important;
+}
+
+.dark .bg-dark-secondary {
+  background-color: #252D3D !important;
+}
+
+/* Text Colors */
+.dark .text-dark-text {
+  color: #F0F4F8 !important;
+}
+
+.dark .text-dark-text-secondary,
+.dark .recording-date {
+  color: #CBD5E0 !important;
+}
+
+.dark .recording-name {
+  color: #F7FAFC !important;
+}
+
+/* Table Styling */
+.dark table thead {
+  background-color: #3B4863 !important;
+  color: #F7FAFC !important;
+}
+
+.dark table tbody tr {
+  border-color: #2D3748 !important;
+}
+
+.dark table tbody tr:hover,
+.dark table tbody tr.selected {
+  background-color: rgba(113, 128, 150, 0.12) !important;
+  color: #F7FAFC !important;
+}
+
+/* Form fields in dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+  color: #F8FAFC !important;
+  background-color: #334155 !important;
+  border-color: #4B5563 !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #60A5FA !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3) !important;
+}
+
+.dark label,
+.dark h1,
+.dark h2,
+.dark h3 {
+  color: #F1F5F9 !important;
+}
+
+.dark small,
+.dark .text-gray-400 {
+  color: #CBD5E1 !important;
+}
+
+/* Checkboxes in dark mode */
+.dark input[type="checkbox"] {
+  background-color: #4B5563 !important;
+  border-color: #6B7280 !important;
+}
+
+.dark input[type="checkbox"]:checked {
+  background-color: #4F46E5 !important;
+}
+
+/* Selection highlighting in dark mode */
+.dark ::selection {
+  background-color: #4F46E5;
+  color: white;
+}
+
+/* Theme toggle styling */
+/* Theme toggle switch styling */
+.theme-switch {
+  position: relative;
+  display: inline-block;
+}
+
+/* Hide default HTML checkbox */
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider background */
+.theme-switch input + span {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+/* The slider knob with the icon */
+.theme-switch input + span + span {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Change background color when toggled */
+.theme-switch input:checked + span {
+  background-color: #4F46E5;
+}
+
+/* Slide knob to the right when toggled */
+.theme-switch input:checked + span + span {
+  transform: translateX(20px);
+}
+
+/* Icon inside the knob */
+.theme-switch img {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.3s ease;
+}
+
+/* Optional: slight grow effect on hover */
+.theme-switch:hover img {
+  transform: scale(1.1);
+}
+
+/* Focus styles for accessibility */
+.theme-switch input:focus + span {
+  box-shadow: 0 0 1px #4F46E5;
+}
+
+/* Delete button styling */
+.delete-button {
+  @apply bg-red-500 hover:bg-red-600 text-white rounded-md px-3 py-2 flex items-center transition-colors duration-200 shadow-sm;
+}
+
+.dark .delete-button {
+  background-color: #E53E3E !important;
+  color: white !important;
+}
+
+.dark .delete-button:hover {
+  background-color: #C53030 !important;
+}
+
+/* Download selected button styling */
+#download-selected {
+  @apply bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md px-4 py-2 flex items-center shadow-sm transition-colors duration-200;
+}
+
+.dark #download-selected {
+  background-color: #3B82F6 !important;
+  color: white !important;
+}
+
+.dark #download-selected:hover {
+  background-color: #2563EB !important;
+}
+
+/* Microphone icon styling */
+.recording-icon {
+  @apply w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-indigo-500 text-white;
+}
+
+.dark .recording-icon {
+  background-color: #6366F1 !important;
+}
+
+/* Table header contrast improvements */
+.dark thead th {
+  font-weight: 600 !important;
+  letter-spacing: 0.025em !important;
+}
+
+/* Table row hover animation */
+tbody tr {
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* Plyr custom styling */
+.plyr {
+  width: 100% !important;
+  max-width: 100% !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  height: auto !important;
+  --plyr-color-main: #4F46E5;
+}
+
+.dark .plyr {
+  --plyr-color-main: #4F46E5;
+  --plyr-audio-controls-background: #374151;
+  --plyr-audio-control-color: #F3F4F6;
+  --plyr-audio-control-color-hover: #FFFFFF;
+  --plyr-range-fill-background: #4F46E5;
+  --plyr-range-thumb-background: #FFFFFF;
+  --plyr-range-track-background: #4B5563;
+}
+
+.plyr--audio .plyr__controls {
+  padding: 8px !important;
+  border-radius: 8px !important;
+}
+
+/* Fix for Plyr progress bar */
+.plyr--full-ui input[type=range] {
+  width: 100% !important;
+}
+
+.plyr__progress {
+  width: 100% !important;
+  min-width: 150px !important;
+}
+
+.plyr__progress__buffer {
+  width: 100% !important;
+}
