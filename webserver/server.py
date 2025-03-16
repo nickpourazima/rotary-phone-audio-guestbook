@@ -25,11 +25,30 @@ from ruamel.yaml import YAML
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_url_path="/static", static_folder="./static")
+# Get absolute paths for reliable file locations regardless of where the app is started
+WEBSERVER_DIR = Path(__file__).parent.absolute()
+BASE_DIR = WEBSERVER_DIR.parent
+STATIC_DIR = WEBSERVER_DIR / "static"
+
+# Log critical paths for debugging
+logger.info(f"Current working directory: {os.getcwd()}")
+logger.info(f"Webserver directory: {WEBSERVER_DIR}")
+logger.info(f"Base directory: {BASE_DIR}")
+logger.info(f"Static directory: {STATIC_DIR}")
+
+# Create Flask app with absolute path to static folder
+app = Flask(__name__,
+           static_url_path="/static",
+           static_folder=str(STATIC_DIR))
 app.secret_key = "supersecretkey"  # Needed for flashing messages
-config_path = Path(__file__).parent.parent / "config.yaml"
-upload_folder = Path(__file__).parent.parent / "uploads"
+
+# Define other important paths
+config_path = BASE_DIR / "config.yaml"
+upload_folder = BASE_DIR / "uploads"
 upload_folder.mkdir(parents=True, exist_ok=True)
+
+logger.info(f"Config path: {config_path}")
+logger.info(f"Upload folder: {upload_folder}")
 
 # Initialize ruamel.yaml
 yaml = YAML()
@@ -38,12 +57,35 @@ yaml = YAML()
 try:
     with config_path.open("r") as f:
         config = yaml.load(f)
+        logger.info(f"Config loaded successfully from {config_path}")
 except FileNotFoundError as e:
     logger.error(f"Configuration file not found: {e}")
     sys.exit(1)
+except Exception as e:
+    logger.error(f"Error loading configuration: {e}")
+    sys.exit(1)
 
-recordings_path = Path(config["recordings_path"])
+# Ensure recordings_path is an absolute path
+recordings_path_str = config.get("recordings_path", "recordings")
+recordings_path = Path(recordings_path_str)
+if not recordings_path.is_absolute():
+    recordings_path = BASE_DIR / recordings_path_str
+    logger.info(f"Converted relative recordings path to absolute: {recordings_path}")
 
+# Verify recordings directory exists and is accessible
+if not recordings_path.exists():
+    logger.warning(f"Recordings directory does not exist: {recordings_path}")
+    try:
+        recordings_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created recordings directory: {recordings_path}")
+    except Exception as e:
+        logger.error(f"Failed to create recordings directory: {e}")
+        sys.exit(1)
+elif not recordings_path.is_dir():
+    logger.error(f"Recordings path exists but is not a directory: {recordings_path}")
+    sys.exit(1)
+else:
+    logger.info(f"Recordings directory verified: {recordings_path}")
 
 def normalize_path(path):
     """Normalize and convert paths to Unix format."""
@@ -77,8 +119,26 @@ def delete_file(filename):
 @app.route("/api/recordings")
 def get_recordings():
     """API route to get a list of all recordings."""
-    files = [f.name for f in recordings_path.iterdir() if f.is_file()]
-    return jsonify(files)
+    try:
+        # List directory contents if it exists
+        if recordings_path.exists() and recordings_path.is_dir():
+            all_items = list(recordings_path.iterdir())
+            logger.info(f"Directory contains {len(all_items)} items")
+
+            # List all items with their types
+            for item in all_items:
+                logger.info(f"  - {item.name} ({'file' if item.is_file() else 'dir'})")
+
+            files = [f.name for f in all_items if f.is_file()]
+            logger.info(f"Found {len(files)} files: {files}")
+            return jsonify(files)
+        else:
+            logger.error(f"Recordings path is not a valid directory: {recordings_path}")
+            return jsonify({"error": "Recordings directory not found"}), 404
+
+    except Exception as e:
+        logger.error(f"Error accessing recordings directory: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/config", methods=["GET", "POST"])
@@ -96,9 +156,8 @@ def edit_config():
                     if file.filename:
                         file_path = upload_folder / file.filename
                         file.save(file_path)
-                        config[field] = normalize_path(
-                            file_path.relative_to(config_path.parent)
-                        )
+                        # Store path relative to BASE_DIR for portability
+                        config[field] = normalize_path(file_path.relative_to(BASE_DIR))
 
             update_config(request.form)
 
@@ -126,10 +185,15 @@ def edit_config():
 @app.route("/recordings/<filename>")
 def serve_recording(filename):
     """Serve a specific recording with proper streaming and range support."""
-    file_path = os.path.join(recordings_path, filename)
+    file_path = recordings_path / filename
+
+    # Verify file exists
+    if not file_path.exists():
+        logger.error(f"Recording file not found: {file_path}")
+        return jsonify({"error": "File not found"}), 404
 
     # Get file size for range requests
-    file_size = os.path.getsize(file_path)
+    file_size = file_path.stat().st_size
 
     # Parse Range header
     range_header = request.headers.get('Range', None)
@@ -152,7 +216,7 @@ def serve_recording(filename):
 
         # Create the response with the proper headers for range request
         resp = Response(
-            generate_file_chunks(file_path, byte1, byte2),
+            generate_file_chunks(str(file_path), byte1, byte2),
             status=206,
             mimetype='audio/wav',
             direct_passthrough=True
@@ -165,12 +229,13 @@ def serve_recording(filename):
 
     # If no range header, serve the whole file
     resp = Response(
-        generate_file_chunks(file_path, 0, file_size - 1),
+        generate_file_chunks(str(file_path), 0, file_size - 1),
         mimetype='audio/wav'
     )
     resp.headers.add('Accept-Ranges', 'bytes')
     resp.headers.add('Content-Length', str(file_size))
     return resp
+
 
 def generate_file_chunks(file_path, byte1=0, byte2=None):
     """Generator to stream file in chunks with range support."""
@@ -193,7 +258,7 @@ def download_all():
     """Download all recordings as a zip file."""
     memory_file = io.BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
-        wav_files = [f for f in recordings_path.iterdir() if f.suffix == ".wav"]
+        wav_files = [f for f in recordings_path.iterdir() if f.is_file() and f.suffix.lower() == ".wav"]
 
         # Log the files being added to the zip
         logger.info(f"Adding {len(wav_files)} files to zip")
@@ -231,10 +296,10 @@ def download_selected():
     memory_file = BytesIO()
     with zipfile.ZipFile(memory_file, "w") as zf:
         for filename in selected_files:
-            file_path = os.path.join(recordings_path, filename)
-            if os.path.exists(file_path) and os.access(file_path, os.R_OK):
+            file_path = recordings_path / filename
+            if file_path.exists() and os.access(str(file_path), os.R_OK):
                 logger.info(f"Adding to zip: {file_path}")
-                zf.write(file_path, filename)
+                zf.write(str(file_path), filename)
             else:
                 logger.error(f"Cannot access file: {file_path}")
 
@@ -253,11 +318,11 @@ def download_selected():
 def rename_recording(old_filename):
     """Rename a recording."""
     new_filename = request.json["newFilename"]
-    old_path = os.path.join(recordings_path, old_filename)
-    new_path = os.path.join(recordings_path, new_filename)
+    old_path = recordings_path / old_filename
+    new_path = recordings_path / new_filename
 
-    if os.path.exists(old_path):
-        os.rename(old_path, new_path)
+    if old_path.exists():
+        os.rename(str(old_path), str(new_path))
         return jsonify(success=True)
     else:
         return jsonify(success=False), 404
@@ -348,3 +413,11 @@ def system_status():
     except Exception as e:
         logger.error(f"Error getting system status: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+if __name__ == "__main__":
+    # Print summary of configuration for debugging
+    logger.info("=== Starting Audio Guestbook Server ===")
+    logger.info(f"Static files location: {STATIC_DIR}")
+    logger.info(f"Recordings location: {recordings_path}")
+    logger.info("=====================================")

@@ -1,12 +1,30 @@
+// In your recordings.js file
 function loadRecordings() {
-  fetch("/api/recordings")
-    .then((response) => response.json())
+  console.log("Starting to load recordings...");
+
+  // Add a timestamp parameter to prevent caching
+  fetch("/api/recordings?t=" + new Date().getTime())
+    .then((response) => {
+      console.log("API response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      return response.json();
+    })
     .then((files) => {
+      console.log("Files returned by API:", files);
+
       const recordingList = document.getElementById("recording-list");
+      if (!recordingList) {
+        console.error("recording-list element not found in DOM");
+        return;
+      }
+
       recordingList.innerHTML = "";
 
-      if (files.length === 0) {
-        // Display an empty state message
+      if (!files || files.length === 0) {
+        console.log("No files returned by API");
+        // Display empty state message
         const emptyRow = document.createElement("tr");
         emptyRow.innerHTML = `
           <td colspan="5" class="py-8 text-center">
@@ -20,59 +38,95 @@ function loadRecordings() {
         recordingList.appendChild(emptyRow);
 
         // Hide the download button when there are no recordings
-        document.getElementById("download-selected").classList.add("hidden");
+        const downloadButton = document.getElementById("download-selected");
+        if (downloadButton) {
+          downloadButton.classList.add("hidden");
+        }
       } else {
         // Show the download button when there are recordings
-        document.getElementById("download-selected").classList.remove("hidden");
+        const downloadButton = document.getElementById("download-selected");
+        if (downloadButton) {
+          downloadButton.classList.remove("hidden");
+        }
 
         // Add recording items
-        files.forEach((filename) => {
-          const item = createRecordingItem(filename);
-          recordingList.appendChild(item);
+        files.forEach((filename, index) => {
+          console.log(`Creating item ${index + 1}/${files.length}: ${filename}`);
+          try {
+            const item = createRecordingItem(filename);
+            recordingList.appendChild(item);
+          } catch (err) {
+            console.error(`Error creating item for ${filename}:`, err);
+          }
         });
       }
 
-      setupEventListeners();
+      try {
+        console.log("Setting up event listeners");
+        setupEventListeners();
+      } catch (err) {
+        console.error("Error in setupEventListeners:", err);
+      }
 
-      // Initialize Plyr for all audio elements
-      const players = Array.from(document.querySelectorAll('audio')).map(p => {
-        // Ensure audio elements are set up for proper loading
-        p.preload = "metadata";
+      try {
+        // Initialize Plyr for all audio elements
+        console.log("Initializing audio players");
+        const audioElements = document.querySelectorAll('audio');
+        console.log(`Found ${audioElements.length} audio elements`);
 
-        // Create and configure the Plyr instance
-        const player = new Plyr(p, {
-          controls: ['play', 'progress', 'current-time', 'duration'],
-          displayDuration: true,
-          hideControls: false,
-          invertTime: false,
-          toggleInvert: false,
-          seekTime: 5,
-          tooltips: { controls: true, seek: true },
-          // Plyr settings to improve seeking behavior
-          fullscreen: { enabled: false },
-          seekTime: 1,
-          keyboard: { focused: true, global: false }
+        const players = Array.from(audioElements).map(p => {
+          // Ensure audio elements are set up for proper loading
+          p.preload = "metadata";
+
+          // Create and configure the Plyr instance with simplified controls
+          // Remove the settings control from the options
+          return new Plyr(p, {
+            controls: ['play', 'progress', 'current-time', 'duration', 'mute', 'volume'],
+            displayDuration: true,
+            hideControls: false,
+            invertTime: false,
+            toggleInvert: false,
+            seekTime: 5,
+            tooltips: { controls: false, seek: false },
+            fullscreen: { enabled: false },
+            keyboard: { focused: true, global: false }
+          });
         });
 
-        // Handle special events for better Chrome compatibility
-        player.on('loadedmetadata', () => {
-          console.log(`Player loaded metadata, duration: ${p.duration}`);
-        });
-
-        player.on('error', (error) => {
-          console.error('Player error:', error);
-        });
-
-        return player;
-      });
-
-      improveAudioDurationDetection();
-
-      console.log(`Initialized ${players.length} Plyr players`);
+        improveAudioDurationDetection();
+        console.log(`Initialized ${players.length} Plyr players`);
+      } catch (err) {
+        console.error("Error initializing audio players:", err);
+      }
     })
     .catch((error) => {
       console.error("Error loading recordings:", error);
-      showToast("Failed to load recordings.", "error");
+
+      // Show error in UI if toast function exists
+      if (typeof showToast === 'function') {
+        showToast("Failed to load recordings: " + error.message, "error");
+      } else {
+        console.error("showToast function not available");
+
+        // Fallback error display if toast isn't available
+        const recordingList = document.getElementById("recording-list");
+        if (recordingList) {
+          recordingList.innerHTML = `
+            <tr>
+              <td colspan="5" class="p-4 text-center text-red-600">
+                <div class="flex flex-col items-center">
+                  <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
+                  <p class="font-semibold">Error loading recordings</p>
+                  <p class="text-sm mt-1">${error.message}</p>
+                  <button onclick="loadRecordings()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Retry
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      }
     });
 }
 

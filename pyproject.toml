@@ -9,5 +9,6 @@ dependencies = [
     "gevent>=24.11.1",
     "gpiozero>=2.0.1",
     "gunicorn>=23.0.0",
+    "psutil>=5.9.4",
     "ruamel-yaml>=0.18.6",
 ]

@@ -36,6 +36,8 @@ markupsafe==2.1.5
     #   werkzeug
 packaging==24.1
     # via gunicorn
+psutil==7.0.0
+    # via rotary-phone-audio-guestbook (pyproject.toml)
 pycparser==2.22
     # via cffi
 ruamel-yaml==0.18.6

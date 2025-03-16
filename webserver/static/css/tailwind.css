@@ -162,12 +162,72 @@
 }
 
 /* Theme toggle styling */
-.theme-switch input:checked+span {
+/* Theme toggle switch styling */
+.theme-switch {
+  position: relative;
+  display: inline-block;
+}
+
+/* Hide default HTML checkbox */
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider background */
+.theme-switch input + span {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+/* The slider knob with the icon */
+.theme-switch input + span + span {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Change background color when toggled */
+.theme-switch input:checked + span {
   background-color: #4F46E5;
 }
 
-.theme-switch input:checked+span+span {
-  transform: translateX(1.25rem);
+/* Slide knob to the right when toggled */
+.theme-switch input:checked + span + span {
+  transform: translateX(20px);
+}
+
+/* Icon inside the knob */
+.theme-switch img {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.3s ease;
+}
+
+/* Optional: slight grow effect on hover */
+.theme-switch:hover img {
+  transform: scale(1.1);
+}
+
+/* Focus styles for accessibility */
+.theme-switch input:focus + span {
+  box-shadow: 0 0 1px #4F46E5;
 }
 
 /* Delete button styling */

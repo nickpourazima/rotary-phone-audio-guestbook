@@ -4,8 +4,12 @@
 .git*
 .trunk
 images
-node_modules
 LICENSE
 README.md
 *.gz
 *.img
+node_modules/
+*.json
+*.lock
+static/css/tailwind.css
+test/
