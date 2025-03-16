@@ -186,68 +186,62 @@
           />
         </div>
       </div>
-      <div class="mt-2 flex justify-end space-x-4">
-        <button type="button" id="reboot-btn" class="btn-warning p-2">
-          <i class="fas fa-sync-alt"></i> Reboot
-        </button>
-        <button type="button" id="shutdown-btn" class="btn-danger p-2">
-          <i class="fas fa-power-off"></i> Shutdown
-        </button>
-      </div>
     </div>
   </div>
-</form>
 
-<!-- Floating Save Button -->
-<div
-  class="bg-primary dark:bg-dark-primary fixed bottom-4 right-4 rounded-full"
->
-  <button
-    type="submit"
-    form="form-id"
-    class="btn-primary p-3 shadow-lg rounded-full"
+  <!-- Floating Save Button -->
+  <div
+    class="bg-primary dark:bg-dark-primary fixed bottom-4 right-4 rounded-full"
   >
-    <i class="fas fa-save mr-2"></i> Save Configuration
-  </button>
-</div>
+    <button
+      type="submit"
+      form="form-id"
+      class="btn-primary p-3 shadow-lg rounded-full"
+    >
+      <i class="fas fa-save mr-2"></i> Save Configuration
+    </button>
+  </div>
 
-{% endblock %} {% block extra_js %}
-<script>
-  document
-    .getElementById("shutdown-btn")
-    .addEventListener("click", function () {
-      if (confirm("Are you sure you want to shut down the system?")) {
-        fetch("/shutdown", { method: "POST" })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              alert("System is shutting down...");
-            } else {
-              alert("Failed to shut down the system.");
-            }
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            alert("An error occurred while trying to shut down the system.");
-          });
-      }
-    });
-  document.getElementById("reboot-btn").addEventListener("click", function () {
-    if (confirm("Are you sure you want to reboot the system?")) {
-      fetch("/reboot", { method: "POST" })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            alert("System is rebooting...");
-          } else {
-            alert("Failed to reboot the system.");
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          alert("An error occurred while trying to reboot the system.");
-        });
-    }
-  });
-</script>
-{% endblock %}
+  {% endblock %} {% block extra_js %}
+  <script>
+    document
+      .getElementById("shutdown-btn")
+      .addEventListener("click", function () {
+        if (confirm("Are you sure you want to shut down the system?")) {
+          fetch("/shutdown", { method: "POST" })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert("System is shutting down...");
+              } else {
+                alert("Failed to shut down the system.");
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("An error occurred while trying to shut down the system.");
+            });
+        }
+      });
+    document
+      .getElementById("reboot-btn")
+      .addEventListener("click", function () {
+        if (confirm("Are you sure you want to reboot the system?")) {
+          fetch("/reboot", { method: "POST" })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert("System is rebooting...");
+              } else {
+                alert("Failed to reboot the system.");
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("An error occurred while trying to reboot the system.");
+            });
+        }
+      });
+  </script>
+  {% endblock %}
+</form>

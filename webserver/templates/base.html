@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
     <link
       rel="icon"
       type="image/x-icon"
@@ -62,6 +65,26 @@
                 class="w-6 h-6"
               />
             </a>
+            <!-- Reboot Icon -->
+            <button
+              id="reboot-btn"
+              class="hover:text-accent flex items-center p-2"
+              title="Reboot System"
+            >
+              <i
+                class="fas fa-sync-alt w-6 h-6 flex items-center justify-center text-lg"
+              ></i>
+            </button>
+            <!-- Shutdown Icon -->
+            <button
+              id="shutdown-btn"
+              class="hover:text-accent flex items-center p-2"
+              title="Shutdown System"
+            >
+              <i
+                class="fas fa-power-off w-6 h-6 flex items-center justify-center text-lg"
+              ></i>
+            </button>
 
             <!-- Theme Switcher Icon -->
             <label
@@ -84,6 +107,54 @@
     </main>
 
     <script src="{{ url_for('static', filename='js/menu.js') }}"></script>
+    <!-- Add global script for reboot/shutdown functionality -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Reboot button event handler
+        document
+          .getElementById("reboot-btn")
+          ?.addEventListener("click", function () {
+            if (confirm("Are you sure you want to reboot the system?")) {
+              fetch("/reboot", { method: "POST" })
+                .then((response) => response.json())
+                .then((data) => {
+                  if (data.success) {
+                    alert("System is rebooting...");
+                  } else {
+                    alert("Failed to reboot the system.");
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error:", error);
+                  alert("An error occurred while trying to reboot the system.");
+                });
+            }
+          });
+
+        // Shutdown button event handler
+        document
+          .getElementById("shutdown-btn")
+          ?.addEventListener("click", function () {
+            if (confirm("Are you sure you want to shut down the system?")) {
+              fetch("/shutdown", { method: "POST" })
+                .then((response) => response.json())
+                .then((data) => {
+                  if (data.success) {
+                    alert("System is shutting down...");
+                  } else {
+                    alert("Failed to shut down the system.");
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error:", error);
+                  alert(
+                    "An error occurred while trying to shut down the system.",
+                  );
+                });
+            }
+          });
+      });
+    </script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>
