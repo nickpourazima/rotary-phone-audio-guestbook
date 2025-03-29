@@ -134,7 +134,7 @@ flask --app webserver/server.py run -h 192.168.x.x -p 8080
 
 I use [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils), thank you to @scruss & @seamusdemora!
 
-If you would like to create a full image for ease of deployment there's a [`deploy.sh`](deploy.sh) script that I created which will run through this process. Edit the ENV VARS inside to point to your own local dev environment.
+If you would like to create a full image for ease of deployment there's a [`deploy.sh`](../deploy.sh) script that I created which will run through this process. Edit the ENV VARS inside to point to your own local dev environment.
 
 Alternatively, a manual run would look something like this:
 

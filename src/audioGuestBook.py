@@ -1,18 +1,17 @@
 #! /usr/bin/env python3
 
 import logging
+import os
 import sys
 import threading
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from signal import pause
-from enum import Enum
-import os
 
 import yaml
-from gpiozero import Device
+from gpiozero import Button, Device
 from gpiozero.pins.rpigpio import RPiGPIOFactory
-from gpiozero import Button
 
 from audioInterface import AudioInterface
 
@@ -90,17 +89,48 @@ class AudioGuestBook:
     def setup_hook(self):
         """
         Sets up the phone hook switch with GPIO based on the configuration.
+
+        For NC (Normally Closed) switches:
+          - NC switches use pull_up=True (internal pull-up resistor)
+          - When the hook is down (on hook), the circuit is CLOSED (button NOT pressed)
+          - When the hook is up (off hook), the circuit is OPEN (button IS pressed)
+
+        For NO (Normally Open) switches:
+          - NO switches use pull_up=False (internal pull-down resistor)
+          - When the hook is down (on hook), the circuit is OPEN (button NOT pressed)
+          - When the hook is up (off hook), the circuit is CLOSED (button IS pressed)
         """
         hook_gpio = self.config["hook_gpio"]
-        pull_up = self.config["hook_type"] == "NC"
+        hook_type = self.config["hook_type"]
+        invert_hook = self.config.get("invert_hook", False)
         bounce_time = self.config["hook_bounce_time"]
+
+        # Log the configuration for debugging
+        logger.info(f"Hook setup: GPIO={hook_gpio}, type={hook_type}, invert={invert_hook}, bounce_time={bounce_time}")
+
+        pull_up = hook_type == "NC"
+
+        # Create button with appropriate pull-up/down resistor
         self.hook = Button(hook_gpio, pull_up=pull_up, bounce_time=bounce_time)
-        if pull_up:
-            self.hook.when_pressed = self.off_hook
-            self.hook.when_released = self.on_hook
+        logger.info(f"Button initialized with pull_up={pull_up}")
+
+        # The combination of hook_type and invert_hook determines the mapping
+        if invert_hook:
+            # Inverted behavior
+            if pull_up:  # NC
+                self.hook.when_released = self.off_hook  # Circuit opens (hook up)
+                self.hook.when_pressed = self.on_hook    # Circuit closes (hook down)
+            else:  # NO
+                self.hook.when_released = self.on_hook   # Circuit opens (hook down)
+                self.hook.when_pressed = self.off_hook   # Circuit closes (hook up)
         else:
-            self.hook.when_pressed = self.on_hook
-            self.hook.when_released = self.off_hook
+            # Normal behavior
+            if pull_up:  # NC
+                self.hook.when_pressed = self.off_hook   # Circuit opens (hook up)
+                self.hook.when_released = self.on_hook   # Circuit closes (hook down)
+            else:  # NO
+                self.hook.when_pressed = self.on_hook    # Circuit closes (hook down)
+                self.hook.when_released = self.off_hook  # Circuit opens (hook up)
 
     def off_hook(self):
         """
@@ -148,9 +178,18 @@ class AudioGuestBook:
             self.config["greeting_start_delay"],
         )
 
+        # Create output filename with timestamp
+        timestamp = datetime.now().isoformat()
         output_file = str(
-            Path(self.config["recordings_path"]) / f"{datetime.now().isoformat()}.wav"
+            Path(self.config["recordings_path"]) / f"{timestamp}.wav"
         )
+        logger.info(f"Will save recording to: {output_file}")
+
+        # Verify recording path exists and is writable
+        recordings_path = Path(self.config["recordings_path"])
+        logger.info(f"Recording directory exists: {recordings_path.exists()}")
+        logger.info(f"Recording directory is writable: {os.access(str(recordings_path), os.W_OK)}")
+
         include_beep = bool(self.config["beep_include_in_message"])
 
         # Check if the phone is still off-hook
@@ -180,7 +219,15 @@ class AudioGuestBook:
             logger.info("Phone on hook. Ending call and saving recording.")
             # Stop any ongoing processes before resetting the state
             self.stop_recording_and_playback()
+
+            # Reset everything to initial state
             self.current_event = CurrentEvent.NONE
+
+            # Make sure we're ready for the next call with more verbose logging
+            logger.info("=========================================")
+            logger.info("System reset completed successfully")
+            logger.info("Ready for next recording - lift handset to begin")
+            logger.info("=========================================")
 
     def time_exceeded(self):
         """
@@ -280,23 +327,34 @@ class AudioGuestBook:
         Stop recording and playback processes.
         """
         # Cancel the timer first to prevent any race conditions
-        if hasattr(self, "timer"):
+        if hasattr(self, "timer") and self.timer is not None:
             self.timer.cancel()
+            self.timer = None
 
         # Stop recording if it's active
         self.audio_interface.stop_recording()
 
         # Stop playback if the greeting thread is still running
-        if hasattr(self, "greeting_thread") and self.greeting_thread.is_alive():
-            logger.info("Stopping playback.")
-            self.audio_interface.continue_playback = False
-            self.audio_interface.stop_playback()
+        # Check if the attribute exists and is not None before checking is_alive()
+        if hasattr(self, "greeting_thread") and self.greeting_thread is not None:
+            try:
+                if self.greeting_thread.is_alive():
+                    logger.info("Stopping playback.")
+                    self.audio_interface.continue_playback = False
+                    self.audio_interface.stop_playback()
 
-            # Wait for the thread to complete with a longer timeout
-            self.greeting_thread.join(timeout=3.0)
+                    # Wait for the thread to complete with a longer timeout
+                    self.greeting_thread.join(timeout=3.0)
+            except (RuntimeError, AttributeError) as e:
+                # Handle any race conditions where the thread might change state
+                # between our check and the operation
+                logger.warning(f"Error while stopping playback thread: {e}")
 
             # Force set to None to ensure clean state for next call
             self.greeting_thread = None
+
+        # Ensure the hook listeners are still active
+        logger.info("Verifying event listeners are active")
 
     def run(self):
         """

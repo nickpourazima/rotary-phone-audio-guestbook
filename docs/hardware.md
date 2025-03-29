@@ -37,7 +37,7 @@ To accommodate either type, you'll need to update the `config.yaml` with the app
 ![image](../images/dissected_view_1.jpg)
 
 - Use this ALSA command from the command line to test if the mic is working on the rpi before you set up the rotary phone: `aplay -l`
-  - You might have a different hardware mapping than I did, in which case you would change the `alsa_hw_mapping` in the [config.yaml](config.yaml).
+  - You might have a different hardware mapping than I did, in which case you would change the `alsa_hw_mapping` in the [config.yaml](../config.yaml).
   - [Here's](https://superuser.com/questions/53957/what-do-alsa-devices-like-hw0-0-mean-how-do-i-figure-out-which-to-use) a good reference to device selection.
   - You can also check [this](https://stackoverflow.com/questions/32838279/getting-list-of-audio-input-devices-in-python) from Python.
 
