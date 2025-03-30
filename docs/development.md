@@ -108,20 +108,29 @@ npx postcss static/css/output.css -o static/css/output.min.css
 The project uses gevent workers for the Gunicorn server to enable proper streaming of audio files. This prevents the server from timing out when playing longer recordings. The `start_server.sh` script is configured to use gevent workers with:
 
 ```bash
-exec gunicorn -w 1 -k gevent -b ${IP_ADDRESS}:8000 webserver.server:app
+exec gunicorn -w 1 -k gevent -b ${IP_ADDRESS}:8080 webserver.server:app
 ```
 
-## Syncing Files with Raspberry Pi
+## Development Workflow
+
+The typical development workflow involves:
+
+1. Making changes on your local development machine
+2. Syncing those changes to the Raspberry Pi
+3. Testing the changes on the Raspberry Pi
+4. Creating backups/releases when satisfied
+
+### Syncing Files with Raspberry Pi
 
 To upload changes from your local dev machine to the Raspberry Pi (Pi Zero or similar), you can use the following rsync command:
 
 ```bash
 # Sync files with Pi
-rsync -av --exclude-from='./rsync-exclude.txt' ${CWD}/rotary-phone-audio-guestbook admin@192.168.x.x:/home/admin
+rsync -av --exclude-from='./rsync-exclude.txt' ./ admin@192.168.x.x:/home/admin/rotary-phone-audio-guestbook
 # Replace 192.168.x.x with the actual IP address of your Raspberry Pi.
 ```
 
-## Starting the Web Server in Development Mode
+### Starting the Web Server in Development Mode
 
 For testing the Flask-based web server on the Raspberry Pi:
 
@@ -130,24 +139,84 @@ For testing the Flask-based web server on the Raspberry Pi:
 flask --app webserver/server.py run -h 192.168.x.x -p 8080
 ```
 
-## Generating an Image for a Release
+## Deploying and Creating Releases
 
-I use [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils), thank you to @scruss & @seamusdemora!
+### Using the Deploy Script
 
-If you would like to create a full image for ease of deployment there's a [`deploy.sh`](../deploy.sh) script that I created which will run through this process. Edit the ENV VARS inside to point to your own local dev environment.
+The included `deploy.sh` script automates the deployment process. It:
+
+1. Syncs files from your local machine to the Raspberry Pi
+2. Installs and configures service files on the Raspberry Pi
+3. Creates a backup image of the Raspberry Pi's SD card (using incremental backup when possible)
+4. Copies the backup image back to your local machine's backup directory
+
+To use it:
+
+```bash
+# Edit the variables at the top of deploy.sh to match your environment
+./deploy.sh
+```
+
+Make sure to configure these variables in the script:
+
+- `RPI_USER`: Username on the Raspberry Pi (usually "admin")
+- `RPI_IP`: IP address of your Raspberry Pi
+- `IMG_VERSION`: Version number for the backup image
+
+#### Setting Up SSH Key Authentication (Optional)
+
+To avoid having to enter your password multiple times during deployment, you can set up SSH key authentication:
+
+```bash
+# Generate an SSH key if you don't have one
+ssh-keygen -t rsa -b 4096
+
+# Copy your public key to the Raspberry Pi
+ssh-copy-id admin@192.168.x.x
+```
+
+After setting up SSH keys, the deploy script will run without password prompts.
+
+### Generating an Image for a Release Manually
+
+The deploy script uses [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils) (thank you to @scruss & @seamusdemora) to create backup images.
+
+To install it on your Raspberry Pi:
+
+```bash
+# Clone the repository
+git clone https://github.com/seamusdemora/RonR-RPi-image-utils.git
+
+# Install the script
+cd RonR-RPi-image-utils
+sudo ./install.sh
+```
 
 Alternatively, a manual run would look something like this:
 
 ```bash
-sudo image-backup -i /mnt/rpizero_rotary_phone_audio_guestbook_v<insert_incremental_version_number_here>_imagebackup.img
-md5sum /mnt/rpizero_rotary_phone_audio_guestbook_v<version number>_imagebackup.img
+# Create a full image backup
+sudo image-backup -i /mnt/rpizero_rotary_phone_audio_guestbook_v<version_number>_imagebackup.img
+
+# Check the integrity
+md5sum /mnt/rpizero_rotary_phone_audio_guestbook_v<version_number>_imagebackup.img
 ```
 
-**Note**: for incremental backups (much faster) point to the existing img and run:
+**Note**: For incremental backups (much faster) point to the existing img file:
 
 ```bash
 sudo image-backup /mnt/rpizero_rotary_phone_audio_guestbook_v<prior_version_number>_imagebackup.img
 ```
+
+### Backup Strategy
+
+The deploy script automatically handles finding the best backup strategy:
+
+1. It first checks if the current version backup already exists (for updates to the same version)
+2. If not, it tries to find previous versions to use as a base for incremental backup
+3. If no previous versions are found, it falls back to a full backup
+
+This approach minimizes backup time when working with iterative releases.
 
 ## Debugging
 
@@ -159,3 +228,11 @@ journalctl -fu audioGuestBook.service
 # OR
 journalctl -fu audioGuestBookWebServer.service
 ```
+
+### Common Issues and Solutions
+
+- **Hook switch detection issues**: Check the `hook_type` and `invert_hook` settings in `config.yaml`
+- **Audio not working**: Verify ALSA configuration with `aplay -l` and `amixer scontrols`
+- **Race conditions during rapid hook toggling**: Increase `hook_bounce_time` in `config.yaml`
+- **No recordings saved**: Check file permissions and make sure `recordings_path` directory exists
+- **Deploy script asking for password multiple times**: Set up SSH key authentication as described above
