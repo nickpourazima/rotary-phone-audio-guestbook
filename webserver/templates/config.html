@@ -187,25 +187,84 @@
     </div>
   </div>
 
-  <!-- GPIO Settings Card -->
-  <div class="card">
-    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
-      <h2 class="font-bold text-lg text-text dark:text-dark-text">
-        GPIO Settings
-      </h2>
+<!-- GPIO Settings Card -->
+<div class="card">
+  <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+    <h2 class="font-bold text-lg text-text dark:text-dark-text">
+      GPIO Settings
+    </h2>
+  </div>
+  <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
+    <!-- Hook GPIO -->
+    <div class="mb-2 lg:mb-4">
+      <label for="hook_gpio" class="block mb-1 lg:mb-2">Hook Gpio</label>
+      <input type="text" id="hook_gpio" name="hook_gpio" value="{{ config['hook_gpio'] }}"
+        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
     </div>
-    <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
-      {% for field in ['hook_gpio', 'hook_type', 'hook_bounce_time',
-      'record_greeting_gpio', 'record_greeting_type',
-      'record_greeting_bounce_time'] %}
-      <div class="mb-2 lg:mb-4">
-        <label for="{{ field }}" class="block mb-1 lg:mb-2">{{ field|replace('_', ' ')|title }}</label>
-        <input type="text" id="{{ field }}" name="{{ field }}" value="{{ config[field] }}"
-          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+
+    <!-- Hook Type -->
+    <div class="mb-2 lg:mb-4">
+      <label for="hook_type" class="block mb-1 lg:mb-2">Hook Type</label>
+      <input type="text" id="hook_type" name="hook_type" value="{{ config['hook_type'] }}"
+        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+    </div>
+
+    <!-- Invert Hook -->
+    <div class="mb-2 lg:mb-4">
+      <label for="invert_hook" class="block mb-1 lg:mb-2">Invert Hook</label>
+      <div class="flex items-center space-x-4">
+        {% if config.get('invert_hook', False) %}
+        <label class="inline-flex items-center">
+          <input type="radio" name="invert_hook" value="true" checked class="mr-1" />
+          <span>Yes</span>
+        </label>
+        <label class="inline-flex items-center">
+          <input type="radio" name="invert_hook" value="false" class="mr-1" />
+          <span>No</span>
+        </label>
+        {% else %}
+        <label class="inline-flex items-center">
+          <input type="radio" name="invert_hook" value="true" class="mr-1" />
+          <span>Yes</span>
+        </label>
+        <label class="inline-flex items-center">
+          <input type="radio" name="invert_hook" value="false" checked class="mr-1" />
+          <span>No</span>
+        </label>
+        {% endif %}
       </div>
-      {% endfor %}
+      <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Set to "Yes" if your phone's hook behavior is reversed</span>
+    </div>
+
+    <!-- Hook Bounce Time -->
+    <div class="mb-2 lg:mb-4">
+      <label for="hook_bounce_time" class="block mb-1 lg:mb-2">Hook Bounce Time</label>
+      <input type="text" id="hook_bounce_time" name="hook_bounce_time" value="{{ config['hook_bounce_time'] }}"
+        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+    </div>
+
+    <!-- Record Greeting GPIO -->
+    <div class="mb-2 lg:mb-4">
+      <label for="record_greeting_gpio" class="block mb-1 lg:mb-2">Record Greeting Gpio</label>
+      <input type="text" id="record_greeting_gpio" name="record_greeting_gpio" value="{{ config['record_greeting_gpio'] }}"
+        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+    </div>
+
+    <!-- Record Greeting Type -->
+    <div class="mb-2 lg:mb-4">
+      <label for="record_greeting_type" class="block mb-1 lg:mb-2">Record Greeting Type</label>
+      <input type="text" id="record_greeting_type" name="record_greeting_type" value="{{ config['record_greeting_type'] }}"
+        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+    </div>
+
+    <!-- Record Greeting Bounce Time -->
+    <div class="mb-2 lg:mb-4">
+      <label for="record_greeting_bounce_time" class="block mb-1 lg:mb-2">Record Greeting Bounce Time</label>
+      <input type="text" id="record_greeting_bounce_time" name="record_greeting_bounce_time" value="{{ config['record_greeting_bounce_time'] }}"
+        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
     </div>
   </div>
+</div>
 
   <!-- Reboot/Shutdown Settings Card -->
   <div class="card">

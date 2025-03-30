@@ -1,11 +1,11 @@
 # Software
 
-## [audioInterface](src/audioInterface.py)
+## [audioInterface](../src/audioInterface.py)
 
 - Utilizes ALSAs native aplay/arecord via subprocess calls.
 - Houses the main playback/record logic.
 
-## [audioGuestBook](src/audioGuestBook.py)
+## [audioGuestBook](../src/audioGuestBook.py)
 
 - This is the main operation mode of the device.
 - There are two callbacks in main which poll the gpio pins for the specified activity (hook depressed, hook released).
@@ -14,12 +14,12 @@
 - On hook (depressed)
   - Nothing happens
 - Off hook (released)
-  - Plays back your own added welcome message located in `/sounds/voicemail.wav` followed by the [beep](/sounds/beep.wav) indicating the start of recording.
+  - Plays back your own added welcome message located in `/sounds/voicemail.wav` followed by the [beep](../sounds/beep.wav) indicating the start of recording.
   - Begins recording the guests voice message.
   - Guest hangs up, recording is stopped and stored to the `/recordings/` directory.
-  - If the guest exceeds the **recording_limit** specified in the [config.yaml](/config.yaml), play the warning [time_exceeded.wav](/sounds/time_exceeded.wav) sound and stop recording.
+  - If the guest exceeds the **recording_limit** specified in the [config.yaml](../config.yaml), play the warning [time_exceeded.wav](../sounds/time_exceeded.wav) sound and stop recording.
 
-## [Web Server](webserver/server.py)
+## [Web Server](../webserver/server.py)
 
 - A lightweight web server that runs locally on your network running on port 8000.
 - The web page can be accessed by finding the raspberry pi's ip address, and with port 8000 (example: 192.168.1.100:8000) on any device on the same network.

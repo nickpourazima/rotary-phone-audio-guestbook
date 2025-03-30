@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import re
+import subprocess
 import sys
 import zipfile
 from io import BytesIO
@@ -9,11 +10,11 @@ from pathlib import Path
 
 from flask import (
     Flask,
+    Response,
     flash,
     jsonify,
     redirect,
     render_template,
-    Response,
     request,
     send_file,
     send_from_directory,
@@ -164,7 +165,15 @@ def edit_config():
             with config_path.open("w") as f:
                 yaml.dump(config, f)
 
-            flash("Configuration updated successfully!", "success")
+            # Restart the audioGuestBook service to apply changes
+            try:
+                subprocess.run(["sudo", "systemctl", "restart", "audioGuestBook.service"], check=True)
+                logger.info("Successfully restarted audioGuestBook service")
+                flash("Configuration updated and service restarted successfully!", "success")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to restart audioGuestBook service: {e}")
+                flash("Configuration updated but failed to restart service. Please restart manually.", "warning")
+
             return redirect(url_for("edit_config"))
         except Exception as e:
             logger.error(f"Error updating configuration: {e}")
@@ -362,23 +371,23 @@ def update_config(form_data):
             continue
 
         # Check if key exists in config
-        if key not in config:
+        if key not in config and key != 'invert_hook':
             logger.warning(f"Form field '{key}' not found in config, skipping")
             continue
 
         # Log the conversion attempt
-        logger.info(f"Updating '{key}': {config[key]} (type: {type(config[key]).__name__}) → '{value}'")
+        logger.info(f"Updating '{key}': {config.get(key, 'Not set')} (type: {type(config.get(key, '')).__name__}) → '{value}'")
 
         try:
-            # Convert value based on the type in config
-            if isinstance(config[key], bool):
+            # Convert value based on the type in config or for new boolean fields
+            if key == 'invert_hook' or isinstance(config.get(key), bool):
                 # Convert string to boolean
                 new_value = (value.lower() == "true")
                 logger.info(f"Converting to boolean: {value} → {new_value}")
                 config[key] = new_value
-            elif isinstance(config[key], int):
+            elif isinstance(config.get(key), int):
                 config[key] = int(value)
-            elif isinstance(config[key], float):
+            elif isinstance(config.get(key), float):
                 config[key] = float(value)
             else:
                 config[key] = value
@@ -388,7 +397,6 @@ def update_config(form_data):
 
         except (ValueError, TypeError) as e:
             logger.error(f"Failed to update '{key}': {e}")
-
 
 @app.route("/api/system-status")
 def system_status():

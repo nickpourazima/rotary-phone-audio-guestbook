@@ -5,6 +5,7 @@ file_type: wav
 channels: 2
 hook_gpio: 22
 hook_type: NC # or 'NO' depending on your hardware configuration
+invert_hook: false  # Set to true if your hook behavior is reversed (recording starts when handset is down instead of up)
 # Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.
 hook_bounce_time: 0.1 # float or None
 recording_limit: 300
