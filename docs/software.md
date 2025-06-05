@@ -38,7 +38,6 @@
 - Delete recordings.
 ![image](../images/webserver_home_dark.png)
 - All `config.yaml` params are configurable from the settings page.
-![image](../images/webserver_settings_dark_1.png)
-![image](../images/webserver_settings_dark_2.png)
+![image](../images/webserver_settings_dark.png)
 - Dark/light themes.
 ![image](../images/webserver_home_light.png)
