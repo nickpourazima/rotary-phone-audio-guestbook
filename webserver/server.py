@@ -123,7 +123,7 @@ def get_recordings():
     try:
         # List directory contents if it exists
         if recordings_path.exists() and recordings_path.is_dir():
-            all_items = list(recordings_path.iterdir())
+            all_items = list(sorted(recordings_path.iterdir(), key=lambda f:f.stat().st_mtime, reverse=True))
             logger.info(f"Directory contains {len(all_items)} items")
 
             # List all items with their types
