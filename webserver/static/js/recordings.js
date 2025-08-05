@@ -37,17 +37,13 @@ function loadRecordings() {
         `;
         recordingList.appendChild(emptyRow);
 
-        // Hide the download button when there are no recordings
-        const downloadButton = document.getElementById("download-selected");
-        if (downloadButton) {
-          downloadButton.classList.add("hidden");
-        }
+        // Hide the action buttons when there are no recordings
+        document.getElementById('download-selected')?.classList.add("hidden");
+        document.getElementById('delete-selected')?.classList.add("hidden");
       } else {
-        // Show the download button when there are recordings
-        const downloadButton = document.getElementById("download-selected");
-        if (downloadButton) {
-          downloadButton.classList.remove("hidden");
-        }
+        // Show the action buttons when there are recordings
+        document.getElementById('download-selected')?.classList.remove("hidden");
+        document.getElementById('delete-selected')?.classList.remove("hidden");
 
         // Add recording items
         files.forEach((filename, index) => {
@@ -176,7 +172,7 @@ function createRecordingItem(filename) {
   const iconColor = `hsl(${hue}, 70%, 80%)`;
 
   row.innerHTML = `
-      <td class="p-2 text-center"><input type="checkbox" class="recording-checkbox w-4 h-4"></td>
+      <td class="p-2 text-center"><input type="checkbox" class="recording-checkbox w-4 h-4" data-id="${filename}"></td>
       <td class="p-2">
         <div class="flex items-center">
           <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3" style="background-color: ${iconColor}">
@@ -209,6 +205,7 @@ function parseDateTime(filename) {
 function setupEventListeners() {
   const selectAllCheckbox = document.getElementById("select-all");
   const downloadSelectedButton = document.getElementById("download-selected");
+  const deleteSelectedButton = document.getElementById("delete-selected");
   const recordingItems = document.querySelectorAll(".recording-item");
 
   selectAllCheckbox.addEventListener("change", function () {
@@ -245,6 +242,55 @@ function setupEventListeners() {
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+  });
+
+  deleteSelectedButton.addEventListener("click", function() {
+    const selectedItems = document.querySelectorAll('.recording-checkbox:checked');
+    if (selectedItems.length === 0) {
+      alert('Please select at least one recording to delete.');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${selectedItems.length} selected recording(s)?`)) {
+      const idsToDelete = Array.from(selectedItems).map(checkbox => checkbox.dataset.id);
+
+      fetch('/delete-recordings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: idsToDelete })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove deleted items from the DOM
+          selectedItems.forEach(checkbox => {
+            checkbox.closest('tr').remove();
+          });
+
+          // Show success message
+          if (typeof showToast === 'function') {
+            showToast(`Deleted ${selectedItems.length} recording(s)`, 'success');
+          }
+
+          // Check if all recordings were deleted
+          if (document.querySelectorAll('.recording-item').length === 0) {
+            loadRecordings(); // Reload to show empty state
+          }
+        } else {
+          throw new Error(data.message || 'Failed to delete recordings');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        if (typeof showToast === 'function') {
+          showToast('Error deleting recordings: ' + error.message, 'error');
+        } else {
+          alert('Error deleting recordings: ' + error.message);
+        }
+      });
+    }
   });
 
   recordingItems.forEach((item) => {

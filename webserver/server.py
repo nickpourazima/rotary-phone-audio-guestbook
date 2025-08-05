@@ -422,6 +422,52 @@ def system_status():
         logger.error(f"Error getting system status: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
 
+@app.route("/delete-recordings", methods=["POST"])
+def delete_recordings():
+    """Delete multiple recordings in bulk."""
+    try:
+        data = request.get_json()
+        if not data or 'ids' not in data:
+            return jsonify({"success": False, "message": "No recordings specified for deletion"}), 400
+
+        deleted_files = []
+        failed_files = []
+
+        for filename in data['ids']:
+            file_path = recordings_path / filename
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+                    deleted_files.append(filename)
+                    logger.info(f"Successfully deleted: {filename}")
+                else:
+                    failed_files.append(filename)
+                    logger.warning(f"File not found: {filename}")
+            except Exception as e:
+                failed_files.append(filename)
+                logger.error(f"Error deleting {filename}: {str(e)}")
+
+        if failed_files:
+            message = f"Deleted {len(deleted_files)} files, failed to delete {len(failed_files)}"
+            return jsonify({
+                "success": False,
+                "message": message,
+                "deleted": deleted_files,
+                "failed": failed_files
+            }), 207  # Multi-status response
+
+        return jsonify({
+            "success": True,
+            "message": f"Successfully deleted {len(deleted_files)} recordings",
+            "deleted": deleted_files
+        })
+
+    except Exception as e:
+        logger.error(f"Error in bulk deletion: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Server error during bulk deletion: {str(e)}"
+        }), 500
 
 if __name__ == "__main__":
     # Print summary of configuration for debugging
