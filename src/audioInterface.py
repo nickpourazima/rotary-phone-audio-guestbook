@@ -74,60 +74,74 @@ class AudioInterface:
         except subprocess.CalledProcessError as e:
             logger.error(f"Error setting volume: {e}")
 
-    def play_audio(self, input_file, volume=1, start_delay_sec=0):
+    def play_audio(self, input_file, volume=1, start_delay_sec=0, stop_event=None):
         """
-        Plays an audio file using `aplay` after setting the volume with `amixer`.
+        Plays an audio file using `aplay` after setting the volume, and
+        supports cooperative cancellation via `stop_event`.
         """
-        if not Path(input_file).exists():
+        p = Path(input_file)
+        if not p.exists():
             logger.error(f"Audio file {input_file} not found.")
             return
 
+        # Set output volume
         self.set_volume(volume)
 
-        # If a start delay is needed, generate and play a silence file
+        # Optional start delay that can also be cancelled
         if start_delay_sec > 0:
-            silence_file = "/tmp/silence.wav"
-            try:
-                subprocess.run(
-                    [
-                        "sox",
-                        "-n",
-                        "-r",
-                        str(self.sample_rate),
-                        "-c",
-                        str(self.channels),
-                        silence_file,
-                        "trim",
-                        "0",
-                        str(start_delay_sec),
-                    ],
-                    check=True,
-                )
-                subprocess.run(
-                    ["aplay", "-D", str(self.alsa_hw_mapping), silence_file], check=True
-                )
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Error generating or playing silence file: {e}")
+            t0 = time.monotonic()
+            while time.monotonic() - t0 < float(start_delay_sec):
+                if stop_event and stop_event.is_set():
+                    return
+                time.sleep(0.05)
 
-        # Play the actual audio file
+        # Start aplay in its own process group so we can kill cleanly
         try:
             self.playback_process = subprocess.Popen(
-                ["aplay", "-D", str(self.alsa_hw_mapping), str(input_file)],
+                ["aplay", "-q", "-D", str(self.alsa_hw_mapping), str(p)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                start_new_session=True,
             )
 
+            # Poll so we can cancel mid-play without blocking
             while self.playback_process and self.playback_process.poll() is None:
-                if not self.continue_playback:
-                    self.playback_process.terminate()
-                    self.playback_process.wait()
+                # Backward compat: if caller still uses continue_playback
+                if not getattr(self, "continue_playback", True):
+                    try:
+                        os.killpg(self.playback_process.pid, signal.SIGINT)
+                    except ProcessLookupError:
+                        pass
                     break
-                time.sleep(0.1)
-        except subprocess.CalledProcessError as e:
+
+                if stop_event and stop_event.is_set():
+                    try:
+                        os.killpg(self.playback_process.pid, signal.SIGINT)
+                    except ProcessLookupError:
+                        pass
+                    break
+
+                time.sleep(0.05)
+
+        except subprocess.SubprocessError as e:
             logger.error(f"Error playing {input_file}: {e}")
+
         finally:
-            if self.playback_process:
-                self.playback_process = None
+            if self.playback_process and self.playback_process.poll() is None:
+                # escalate to TERM if SIGINT didn't stop it
+                try:
+                    os.killpg(self.playback_process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                # last resort kill after a short grace
+                try:
+                    self.playback_process.wait(timeout=0.8)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(self.playback_process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+            self.playback_process = None
 
     def stop_playback(self):
         """
@@ -160,7 +174,9 @@ class AudioInterface:
         try:
             output_dir = os.path.dirname(output_file)
             if not os.path.exists(output_dir):
-                logger.warning(f"Output directory does not exist: {output_dir}, attempting to create")
+                logger.warning(
+                    f"Output directory does not exist: {output_dir}, attempting to create"
+                )
                 os.makedirs(output_dir, exist_ok=True)
 
             if not os.access(output_dir, os.W_OK):
@@ -199,7 +215,9 @@ class AudioInterface:
                 stderr=subprocess.PIPE,
                 preexec_fn=preexec,
             )
-            logger.info(f"Started recording process with PID: {self.recording_process.pid}")
+            logger.info(
+                f"Started recording process with PID: {self.recording_process.pid}"
+            )
         except subprocess.SubprocessError as e:
             logger.error(f"Failed to start recording process: {e}")
 
@@ -208,7 +226,9 @@ class AudioInterface:
         Stops the ongoing audio recording process.
         """
         if self.recording_process:
-            logger.info(f"Stopping recording process with PID: {self.recording_process.pid}")
+            logger.info(
+                f"Stopping recording process with PID: {self.recording_process.pid}"
+            )
             try:
                 # Send SIGINT to the recording process to stop it gracefully
                 # This will allow arecord to finalize the file properly
@@ -224,38 +244,62 @@ class AudioInterface:
                     logger.info("Recording process terminated gracefully")
                     # Check if the file was actually created
                     try:
-                        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
-                            logger.info(f"Recording saved successfully: {output_file} ({os.path.getsize(output_file)} bytes)")
+                        if (
+                            os.path.exists(output_file)
+                            and os.path.getsize(output_file) > 0
+                        ):
+                            logger.info(
+                                f"Recording saved successfully: {output_file} ({os.path.getsize(output_file)} bytes)"
+                            )
                         else:
-                            logger.warning(f"Recording file not found or empty: {output_file}")
+                            logger.warning(
+                                f"Recording file not found or empty: {output_file}"
+                            )
                     except OSError as e:
                         logger.error(f"Error checking recording file: {e}")
                 except subprocess.TimeoutExpired:
-                    logger.info("Recording process is taking time to finalize, waiting...")
+                    logger.info(
+                        "Recording process is taking time to finalize, waiting..."
+                    )
                     # Try waiting a bit longer before force killing
                     time.sleep(1)
 
                     # Check if it's still running
                     if self.recording_process.poll() is None:
                         logger.info("Recording process still running, using SIGTERM")
-                        os.killpg(os.getpgid(self.recording_process.pid), signal.SIGTERM)
+                        os.killpg(
+                            os.getpgid(self.recording_process.pid), signal.SIGTERM
+                        )
                         time.sleep(0.5)  # Give it a moment to respond to SIGTERM
 
                         # Only use SIGKILL as a last resort
                         if self.recording_process.poll() is None:
-                            logger.info("Recording process not responding to SIGTERM, using SIGKILL")
-                            os.killpg(os.getpgid(self.recording_process.pid), signal.SIGKILL)
+                            logger.info(
+                                "Recording process not responding to SIGTERM, using SIGKILL"
+                            )
+                            os.killpg(
+                                os.getpgid(self.recording_process.pid), signal.SIGKILL
+                            )
 
                     self.recording_process.wait(timeout=1)
 
                     # Check again if the file was created after forced termination
                     try:
-                        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
-                            logger.info(f"Recording saved successfully after forced termination: {output_file} ({os.path.getsize(output_file)} bytes)")
+                        if (
+                            os.path.exists(output_file)
+                            and os.path.getsize(output_file) > 0
+                        ):
+                            logger.info(
+                                f"Recording saved successfully after forced termination: {output_file} ({os.path.getsize(output_file)} bytes)"
+                            )
                         else:
-                            logger.warning(f"Recording file not found or empty after forced termination: {output_file}")
+                            logger.warning(
+                                f"Recording file not found or empty after forced termination: {output_file}"
+                            )
                     except OSError as e:
-                        logger.error(f"Error checking recording file after forced termination: {e}")
+                        logger.error(
+                            f"Error checking recording file after forced termination: {e}"
+                        )
 
             except (ProcessLookupError, subprocess.SubprocessError) as e:
                 logger.warning(f"Error while terminating recording process: {e}")
@@ -263,19 +307,23 @@ class AudioInterface:
             # Final cleanup - ensure all arecord processes are gone
             try:
                 # Using pkill with SIGINT first
-                result = subprocess.run(["pkill", "-INT", "-f", "arecord"],
-                                        check=False,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
+                result = subprocess.run(
+                    ["pkill", "-INT", "-f", "arecord"],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
                 # Short delay to let the processes finalize files
                 time.sleep(0.5)
 
                 # Then use regular pkill as a last resort
-                result = subprocess.run(["pkill", "-f", "arecord"],
-                                    check=False,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+                result = subprocess.run(
+                    ["pkill", "-f", "arecord"],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
                 if result.returncode == 0:
                     logger.info("Additional arecord processes terminated")
@@ -290,16 +338,20 @@ class AudioInterface:
             logger.info("No active recording process to stop, checking for strays")
             try:
                 # Use SIGINT first for stray processes too
-                subprocess.run(["pkill", "-INT", "-f", "arecord"],
-                            check=False,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
+                subprocess.run(
+                    ["pkill", "-INT", "-f", "arecord"],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
                 time.sleep(0.5)  # Give them time to finalize
 
-                result = subprocess.run(["pkill", "-f", "arecord"],
-                                    check=False,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+                result = subprocess.run(
+                    ["pkill", "-f", "arecord"],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
                 if result.returncode == 0:
                     logger.info("Found and terminated stray arecord processes")
