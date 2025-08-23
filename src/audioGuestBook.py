@@ -71,6 +71,7 @@ class AudioGuestBook:
         self.setup_record_greeting()
         self.setup_shutdown_button()
         self.current_event = CurrentEvent.NONE
+        self.should_start_recording = True  # Temporary fix for hanging up during greeting
 
     def load_config(self):
         """
@@ -143,6 +144,9 @@ class AudioGuestBook:
 
         logger.info("Phone off hook, ready to begin!")
 
+        # Reset the recording flag
+        self.should_start_recording = True  # Temporary fix for hanging up during greeting
+
         # Ensure clean state by forcing stop of any existing processes
         self.stop_recording_and_playback()
 
@@ -192,10 +196,13 @@ class AudioGuestBook:
 
         include_beep = bool(self.config["beep_include_in_message"])
 
-        # Check if the phone is still off-hook
+        # Check if the phone is still off-hook AND we should start recording
         # Start recording already BEFORE the beep (beep will be included in message)
-        if self.current_event == CurrentEvent.HOOK and include_beep:
+        if self.current_event == CurrentEvent.HOOK and include_beep and self.should_start_recording:
+            logger.info("Starting recording (beep included)")
             self.start_recording(output_file)
+        elif include_beep:
+            logger.info("Skipping recording - phone hung up during greeting")
 
         # Play the beep
         if self.current_event == CurrentEvent.HOOK:
@@ -206,10 +213,13 @@ class AudioGuestBook:
                 self.config["beep_start_delay"],
             )
 
-        # Check if the phone is still off-hook
+        # Check if the phone is still off-hook AND we should start recording
         # Start recording AFTER the beep (beep will NOT be included in message)
-        if self.current_event == CurrentEvent.HOOK and not include_beep:
+        if self.current_event == CurrentEvent.HOOK and not include_beep and self.should_start_recording:
+            logger.info("Starting recording (beep not included)")
             self.start_recording(output_file)
+        elif not include_beep:
+            logger.info("Skipping recording - phone hung up during greeting/beep")
 
     def on_hook(self):
         """
@@ -217,6 +227,10 @@ class AudioGuestBook:
         """
         if self.current_event == CurrentEvent.HOOK:
             logger.info("Phone on hook. Ending call and saving recording.")
+            
+            # Prevent any recording from starting
+            self.should_start_recording = False  # Temporary fix for hanging up during greeting
+            
             # Stop any ongoing processes before resetting the state
             self.stop_recording_and_playback()
 
