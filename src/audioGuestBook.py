@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import threading
+import time  # already imported once, but safe here
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -14,6 +15,39 @@ from gpiozero import Button, Device
 from gpiozero.pins.rpigpio import RPiGPIOFactory
 
 from audioInterface import AudioInterface
+
+def get_stable_hook_state(button, stable_time=0.2, check_interval=0.02, bounce_tolerance=0.03):
+    """
+    Poll the hook switch until it has been stable for `stable_time` seconds,
+    but allow very short bounces (less than `bounce_tolerance` seconds).
+    
+    Returns True (pressed/off-hook) or False (released/on-hook).
+    Blocks until a stable value is found.
+    """
+    last_state = button.is_pressed
+    stable_since = time.time()
+    last_change_time = time.time()
+
+    while True:
+        current_state = button.is_pressed
+        now = time.time()
+        if current_state != last_state:
+            # record the time of this state change
+            last_change_time = now
+            last_state = current_state
+            logger.debug(f"Hook state changed: {current_state}")
+
+        # only consider it stable if the state hasn't changed longer than bounce_tolerance
+        if now - last_change_time >= bounce_tolerance:
+            if now - stable_since >= stable_time:
+                logger.info(f"Stable hook state confirmed: {current_state}")
+                return current_state
+        else:
+            # reset stable_since if in bounce window
+            stable_since = now
+
+        time.sleep(check_interval)
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,6 +105,14 @@ class AudioGuestBook:
         self.setup_record_greeting()
         self.setup_shutdown_button()
         self.current_event = CurrentEvent.NONE
+        self.watchdog_active = False
+
+        # Start the off-hook watchdog to catch missed events
+        self._start_off_hook_watchdog()
+
+        # In __init__
+        self.session_lock = threading.Lock()
+
 
     def load_config(self):
         """
@@ -132,32 +174,132 @@ class AudioGuestBook:
                 self.hook.when_pressed = self.on_hook    # Circuit closes (hook down)
                 self.hook.when_released = self.off_hook  # Circuit opens (hook up)
 
+    def _start_off_hook_watchdog(self):
+        """
+        Watchdog monitors for missed off-hook events.
+        If a lift is detected while no session is active, it triggers off_hook().
+        Won't trigger repeatedly during the same idle period.
+        """
+        triggered = False  # tracks if off_hook has been triggered during idle
+
+        def watchdog():
+            nonlocal triggered
+            logger.info("[OFF-HOOK WATCHDOG] Monitoring for missed off-hook events.")
+            while True:
+                if self.current_event == CurrentEvent.NONE and self.hook.is_pressed:
+                    if not triggered:
+                        logger.warning("[OFF-HOOK WATCHDOG] Missed off-hook detected! User lift detected.")
+                        self.off_hook()
+                        triggered = True
+                else:
+                    # Reset flag once phone goes on-hook or session starts
+                    triggered = False
+
+                time.sleep(0.2)
+
+        t = threading.Thread(target=watchdog, daemon=True)
+        t.start()
+
+
+
+
+
     def off_hook(self):
         """
-        Handles the off-hook event to start playback and recording.
+        Handles off-hook event to start session.
+        Only one session can run at a time.
         """
-        # Check that no other event is currently in progress
-        if self.current_event != CurrentEvent.NONE:
-            logger.info("Another event is in progress. Ignoring off-hook event.")
+        # Acquire lock to prevent double-start
+        if not self.session_lock.acquire(blocking=False):
+            logger.info("off_hook() ignored: session already starting")
             return
 
-        logger.info("Phone off hook, ready to begin!")
+        try:
+            if self.current_event != CurrentEvent.NONE:
+                logger.info("off_hook() ignored: session already active")
+                return
 
-        # Ensure clean state by forcing stop of any existing processes
-        self.stop_recording_and_playback()
+            logger.info(f"off_hook() triggered. current_event: {self.current_event}")
+            logger.info("Phone off hook, starting session immediately.")
 
-        self.current_event = CurrentEvent.HOOK  # Ensure playback can continue
-        # Start the greeting playback in a separate thread
-        self.greeting_thread = threading.Thread(target=self.play_greeting_and_beep)
-        self.greeting_thread.start()
+            # Ensure clean state
+            self.stop_recording_and_playback()
+
+            # Start new hook session
+            self.current_event = CurrentEvent.HOOK
+            self.greeting_thread = threading.Thread(target=self._hook_session)
+            self.greeting_thread.start()
+        finally:
+            self.session_lock.release()
+
+    
+    def _check_off_hook(self, stable_time=0.2, cancel_grace=0.3) -> bool:
+        """
+        Return True if phone is off-hook (stable).
+        Only cancels session if an actual session is active.
+        Adds a grace period to ignore short bounces.
+        """
+        # Wait a short grace period before reading
+        start = time.time()
+        while time.time() - start < cancel_grace:
+            if get_stable_hook_state(self.hook, stable_time=stable_time, check_interval=0.05):
+                return True
+            time.sleep(0.01)
+
+        # Final check
+        stable_state = get_stable_hook_state(self.hook, stable_time=stable_time, check_interval=0.05)
+
+        if not stable_state:
+            if self.current_event != CurrentEvent.NONE:
+                logger.info("Phone went on-hook (stable). Cancelling session via on_hook().")
+                # Call on_hook() directly to ensure consistent cleanup
+                self.on_hook()
+            else:
+                logger.info("Phone briefly on-hook during startup. Ignoring.")
+            return False
+
+        return True
+
+    def _start_hook_watchdog(self):
+        """Start a background thread to monitor hook state while recording."""
+        def watchdog():
+            self.watchdog_active = True
+            logger.info("[WATCHDOG] Started hook monitoring thread.")
+            while self.current_event == CurrentEvent.HOOK:  # recording session
+                if not self.hook.is_pressed:  # handset down (on-hook)
+                    logger.info("[WATCHDOG] Handset detected ON-HOOK during recording.")
+                    
+                    self.stop_recording_and_playback()
+                    self.current_event = CurrentEvent.NONE
+                    logger.info("Recording session ended by watchdog.")
+                    break
+                time.sleep(0.1)
+            self.watchdog_active = False
+            logger.info("[WATCHDOG] Exiting thread.")
+
+        t = threading.Thread(target=watchdog, daemon=True)
+        t.start()
+
+
 
     def start_recording(self, output_file: str):
         """
         Starts the audio recording process and sets a timer for time exceeded event.
         """
+        logger.info(f"[{datetime.now()}] start_recording() called. current_event: {self.current_event}")
 
+        # Stop all playback before recording
+        self.audio_interface.continue_playback = False
+        self.audio_interface.stop_playback()
+        import time; time.sleep(0.05)  # tiny delay to let ALSA flush
+
+        # Start Recording
         self.audio_interface.start_recording(output_file)
         logger.info("Recording started...")
+
+        #Start Watchdog Timer
+        self.current_event = CurrentEvent.HOOK
+        self._start_hook_watchdog()
 
         # Start a timer to handle the time exceeded event
         self.timer = threading.Timer(
@@ -165,69 +307,106 @@ class AudioGuestBook:
         )
         self.timer.start()
 
-    def play_greeting_and_beep(self):
-        """
-        Plays the greeting and beep sounds, checking for the on-hook event.
-        """
-        # Play the greeting
-        self.audio_interface.continue_playback = self.current_event == CurrentEvent.HOOK
-        logger.info("Playing voicemail...")
+    def _hook_session(self):
+        """Manages a single off-hook session: greeting, beep, and recording."""
+
+        # Stop any playback first
+        self.audio_interface.continue_playback = False
+        self.audio_interface.stop_playback()
+        time.sleep(0.05)
+
+        # Wait until off-hook is stable before greeting
+        if not self._check_off_hook():
+            return  # Abort if user hung up
+
+        logger.info("Playing greeting...")
+        self.audio_interface.continue_playback = True
         self.audio_interface.play_audio(
             self.config["greeting"],
             self.config["greeting_volume"],
-            self.config["greeting_start_delay"],
+            self.config["greeting_start_delay"]
         )
 
-        # Create output filename with timestamp
+        # Only check off-hook **after greeting starts** to catch real hangs
+        if not self._check_off_hook():
+            return
+
+        # Continue with beep and recording
         timestamp = datetime.now().isoformat()
-        output_file = str(
-            Path(self.config["recordings_path"]) / f"{timestamp}.wav"
-        )
+        output_file = str(Path(self.config["recordings_path"]) / f"{timestamp}.wav")
         logger.info(f"Will save recording to: {output_file}")
 
-        # Verify recording path exists and is writable
-        recordings_path = Path(self.config["recordings_path"])
-        logger.info(f"Recording directory exists: {recordings_path.exists()}")
-        logger.info(f"Recording directory is writable: {os.access(str(recordings_path), os.W_OK)}")
-
-        include_beep = bool(self.config["beep_include_in_message"])
-
-        # Check if the phone is still off-hook
-        # Start recording already BEFORE the beep (beep will be included in message)
-        if self.current_event == CurrentEvent.HOOK and include_beep:
-            self.start_recording(output_file)
-
-        # Play the beep
-        if self.current_event == CurrentEvent.HOOK:
-            logger.info("Playing beep...")
+        if self.config["beep_include_in_message"]:
+            logger.info("Playing beep (included in recording)...")
             self.audio_interface.play_audio(
                 self.config["beep"],
                 self.config["beep_volume"],
-                self.config["beep_start_delay"],
+                self.config["beep_start_delay"]
             )
-
-        # Check if the phone is still off-hook
-        # Start recording AFTER the beep (beep will NOT be included in message)
-        if self.current_event == CurrentEvent.HOOK and not include_beep:
+            if not self._check_off_hook():
+                return
             self.start_recording(output_file)
+        else:
+            logger.info("Playing beep (excluded from recording)...")
+            self.audio_interface.play_audio(
+                self.config["beep"],
+                self.config["beep_volume"],
+                self.config["beep_start_delay"]
+            )
+            if not self._check_off_hook():
+                return
+            self.start_recording(output_file)
+
 
     def on_hook(self):
         """
-        Handles the on-hook event to stop and save the recording.
+        Handles the on-hook event to stop playback or recording.
+        Uses debounce if watchdog isn't running.
         """
+        raw_state = self.hook.is_pressed
+        logger.info(f"[DEBUG] on_hook() fired. raw_state={raw_state}")
+
+        if self.watchdog_active:
+            logger.info("Watchdog already handled on-hook. Ignoring this event.")
+            return
+
+        # If we are recording, watchdog handles ON-HOOK exclusively
+        if self.current_event == CurrentEvent.HOOK and self.audio_interface.is_recording_active():
+            logger.info("on_hook() ignored: recording in progress, watchdog will handle cleanup.")
+            return
+
+        # Detect whether watchdog is active
+        watchdog_active = (self.current_event == CurrentEvent.HOOK)
+
+        if watchdog_active:
+            # Watchdog already debounces, so trust raw_state
+            if raw_state:  # still off-hook
+                logger.info("Off-hook confirmed while recording. Ignoring on_hook.")
+                return
+        else:
+            # No watchdog running (e.g., greeting phase) → debounce here
+            stable = get_stable_hook_state(self.hook)
+            logger.info(f"[DEBUG] get_stable_hook_state -> {stable}")
+            if stable:  # still off-hook
+                logger.info("Debounce check: still off-hook. Ignoring on_hook.")
+                return
+
+        logger.info(f"on_hook() called. Current state: {self.current_event}")
+
         if self.current_event == CurrentEvent.HOOK:
             logger.info("Phone on hook. Ending call and saving recording.")
-            # Stop any ongoing processes before resetting the state
             self.stop_recording_and_playback()
-
-            # Reset everything to initial state
             self.current_event = CurrentEvent.NONE
-
-            # Make sure we're ready for the next call with more verbose logging
+            logger.info("Set current_event to NONE.")
             logger.info("=========================================")
             logger.info("System reset completed successfully")
             logger.info("Ready for next recording - lift handset to begin")
             logger.info("=========================================")
+        else:
+            logger.info("on_hook() triggered, but no active HOOK session.")
+            self.current_event = CurrentEvent.NONE
+
+
 
     def time_exceeded(self):
         """
@@ -320,41 +499,27 @@ class AudioGuestBook:
         if self.current_event == CurrentEvent.RECORD_GREETING:
             path = str(Path(self.config["greeting"]))
             # Start recording new greeting message
+            # Stop playback before recording
+            self.audio_interface.continue_playback = False
+            self.audio_interface.stop_playback()
+            import time; time.sleep(0.05)
             self.start_recording(path)
 
     def stop_recording_and_playback(self):
-        """
-        Stop recording and playback processes.
-        """
-        # Cancel the timer first to prevent any race conditions
-        if hasattr(self, "timer") and self.timer is not None:
+        """Stop recording and playback cleanly without joining the current thread."""
+        if hasattr(self, "timer") and self.timer:
             self.timer.cancel()
             self.timer = None
 
-        # Stop recording if it's active
         self.audio_interface.stop_recording()
 
-        # Stop playback if the greeting thread is still running
-        # Check if the attribute exists and is not None before checking is_alive()
-        if hasattr(self, "greeting_thread") and self.greeting_thread is not None:
-            try:
-                if self.greeting_thread.is_alive():
-                    logger.info("Stopping playback.")
-                    self.audio_interface.continue_playback = False
-                    self.audio_interface.stop_playback()
-
-                    # Wait for the thread to complete with a longer timeout
-                    self.greeting_thread.join(timeout=3.0)
-            except (RuntimeError, AttributeError) as e:
-                # Handle any race conditions where the thread might change state
-                # between our check and the operation
-                logger.warning(f"Error while stopping playback thread: {e}")
-
-            # Force set to None to ensure clean state for next call
+        if hasattr(self, "greeting_thread") and self.greeting_thread:
+            self.audio_interface.continue_playback = False
+            self.audio_interface.stop_playback()
+            # Don't join the thread here
             self.greeting_thread = None
 
-        # Ensure the hook listeners are still active
-        logger.info("Verifying event listeners are active")
+        logger.info("Event listeners verified.")
 
     def run(self):
         """
