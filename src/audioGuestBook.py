@@ -16,6 +16,13 @@ from gpiozero.pins.rpigpio import RPiGPIOFactory
 
 from audioInterface import AudioInterface
 
+def cleanup_session(self):
+    """Ensure all session-related flags and threads are properly reset"""
+    self.current_event = CurrentEvent.NONE
+    self.recording_watchdog_active = False
+    if hasattr(self, 'timer') and self.timer:
+        self.timer.cancel()
+
 def get_stable_hook_state(button, stable_time=0.2, check_interval=0.02, bounce_tolerance=0.03):
     """
     Poll the hook switch until it has been stable for `stable_time` seconds,
