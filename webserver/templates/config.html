@@ -110,161 +110,142 @@
                 class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
             </div>
 
-            <div class="mb-2">
-              <label for="beep_include_in_message" class="block mb-1">Include in Recording</label>
-              <div class="flex items-center space-x-4">
-                {% if config['beep_include_in_message'] %}
-                <label class="inline-flex items-center">
-                  <input type="radio" name="beep_include_in_message" value="true" checked class="mr-1" />
-                  <span>Yes</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" name="beep_include_in_message" value="false" class="mr-1" />
-                  <span>No</span>
-                </label>
-                {% else %}
-                <label class="inline-flex items-center">
-                  <input type="radio" name="beep_include_in_message" value="true" class="mr-1" />
-                  <span>Yes</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" name="beep_include_in_message" value="false" checked class="mr-1" />
-                  <span>No</span>
-                </label>
-                {% endif %}
+          </div>
+        </div>
+
+        <!-- Time exceeded settings -->
+        <div class="space-y-3">
+          <h3 class="font-semibold mb-2 pb-1 border-b border-gray-200 dark:border-gray-700">
+            Time Exceeded Settings
+          </h3>
+
+          <div class="mb-2">
+            <label for="time_exceeded_file" class="block mb-1">Time Exceeded File</label>
+            <div
+              class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center hover:border-accent dark:hover:border-accent transition-colors duration-200">
+              <input type="file" id="time_exceeded_file" name="time_exceeded_file"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+              <div class="flex flex-col items-center">
+                <i class="fas fa-cloud-upload-alt text-xl mb-1 text-gray-400 dark:text-gray-500"></i>
+                <span class="text-sm text-gray-500 dark:text-gray-400">Upload file</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate w-full">{{ config['time_exceeded']
+                  }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Time exceeded settings -->
-          <div class="space-y-3">
-            <h3 class="font-semibold mb-2 pb-1 border-b border-gray-200 dark:border-gray-700">
-              Time Exceeded Settings
-            </h3>
-
-            <div class="mb-2">
-              <label for="time_exceeded_file" class="block mb-1">Time Exceeded File</label>
-              <div
-                class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center hover:border-accent dark:hover:border-accent transition-colors duration-200">
-                <input type="file" id="time_exceeded_file" name="time_exceeded_file"
-                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <div class="flex flex-col items-center">
-                  <i class="fas fa-cloud-upload-alt text-xl mb-1 text-gray-400 dark:text-gray-500"></i>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">Upload file</span>
-                  <span class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate w-full">{{ config['time_exceeded']
-                    }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mb-2">
-              <label for="time_exceeded_volume" class="block mb-1">Volume</label>
-              <input type="number" step="0.1" id="time_exceeded_volume" name="time_exceeded_volume"
-                value="{{ config['time_exceeded_volume'] }}"
-                class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-            </div>
+          <div class="mb-2">
+            <label for="time_exceeded_volume" class="block mb-1">Volume</label>
+            <input type="number" step="0.1" id="time_exceeded_volume" name="time_exceeded_volume"
+              value="{{ config['time_exceeded_volume'] }}"
+              class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Recording Settings Card -->
-    <div class="card">
-      <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
-        <h2 class="font-bold text-lg text-text dark:text-dark-text">
-          Recording Settings
-        </h2>
+  <!-- Recording Settings Card -->
+  <div class="card">
+    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+      <h2 class="font-bold text-lg text-text dark:text-dark-text">
+        Recording Settings
+      </h2>
+    </div>
+    <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
+      {% for field in ['recording_limit'] %}
+      <div class="mb-2 lg:mb-4">
+        <label for="{{ field }}" class="block mb-1 lg:mb-2">{{ field|replace('_', ' ')|title }}</label>
+        <input type="number" id="{{ field }}" name="{{ field }}" value="{{ config[field] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
       </div>
-      <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
-        {% for field in ['recording_limit', 'time_exceeded_length'] %}
-        <div class="mb-2 lg:mb-4">
-          <label for="{{ field }}" class="block mb-1 lg:mb-2">{{ field|replace('_', ' ')|title }}</label>
-          <input type="number" id="{{ field }}" name="{{ field }}" value="{{ config[field] }}"
-            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+      {% endfor %}
+    </div>
+  </div>
+  </div>
+
+  <!-- GPIO Settings Card -->
+  <div class="card">
+    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+      <h2 class="font-bold text-lg text-text dark:text-dark-text">
+        GPIO Settings
+      </h2>
+    </div>
+    <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
+      <!-- Hook GPIO -->
+      <div class="mb-2 lg:mb-4">
+        <label for="hook_gpio" class="block mb-1 lg:mb-2">Hook Gpio</label>
+        <input type="text" id="hook_gpio" name="hook_gpio" value="{{ config['hook_gpio'] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+      </div>
+
+      <!-- Hook Type -->
+      <div class="mb-2 lg:mb-4">
+        <label for="hook_type" class="block mb-1 lg:mb-2">Hook Type</label>
+        <input type="text" id="hook_type" name="hook_type" value="{{ config['hook_type'] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+      </div>
+
+      <!-- Invert Hook -->
+      <div class="mb-2 lg:mb-4">
+        <label for="invert_hook" class="block mb-1 lg:mb-2">Invert Hook</label>
+        <div class="flex items-center space-x-4">
+          {% if config.get('invert_hook', False) %}
+          <label class="inline-flex items-center">
+            <input type="radio" name="invert_hook" value="true" checked class="mr-1" />
+            <span>Yes</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="radio" name="invert_hook" value="false" class="mr-1" />
+            <span>No</span>
+          </label>
+          {% else %}
+          <label class="inline-flex items-center">
+            <input type="radio" name="invert_hook" value="true" class="mr-1" />
+            <span>Yes</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="radio" name="invert_hook" value="false" checked class="mr-1" />
+            <span>No</span>
+          </label>
+          {% endif %}
         </div>
-        {% endfor %}
+        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Set to "Yes" if your phone's hook behavior is
+          reversed</span>
+      </div>
+
+      <!-- Hook Bounce Time -->
+      <div class="mb-2 lg:mb-4">
+        <label for="hook_bounce_time" class="block mb-1 lg:mb-2">Hook Bounce Time</label>
+        <input type="text" id="hook_bounce_time" name="hook_bounce_time" value="{{ config['hook_bounce_time'] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+      </div>
+
+      <!-- Record Greeting GPIO -->
+      <div class="mb-2 lg:mb-4">
+        <label for="record_greeting_gpio" class="block mb-1 lg:mb-2">Record Greeting Gpio</label>
+        <input type="text" id="record_greeting_gpio" name="record_greeting_gpio"
+          value="{{ config['record_greeting_gpio'] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+      </div>
+
+      <!-- Record Greeting Type -->
+      <div class="mb-2 lg:mb-4">
+        <label for="record_greeting_type" class="block mb-1 lg:mb-2">Record Greeting Type</label>
+        <input type="text" id="record_greeting_type" name="record_greeting_type"
+          value="{{ config['record_greeting_type'] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+      </div>
+
+      <!-- Record Greeting Bounce Time -->
+      <div class="mb-2 lg:mb-4">
+        <label for="record_greeting_bounce_time" class="block mb-1 lg:mb-2">Record Greeting Bounce Time</label>
+        <input type="text" id="record_greeting_bounce_time" name="record_greeting_bounce_time"
+          value="{{ config['record_greeting_bounce_time'] }}"
+          class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
       </div>
     </div>
   </div>
-
-<!-- GPIO Settings Card -->
-<div class="card">
-  <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
-    <h2 class="font-bold text-lg text-text dark:text-dark-text">
-      GPIO Settings
-    </h2>
-  </div>
-  <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
-    <!-- Hook GPIO -->
-    <div class="mb-2 lg:mb-4">
-      <label for="hook_gpio" class="block mb-1 lg:mb-2">Hook Gpio</label>
-      <input type="text" id="hook_gpio" name="hook_gpio" value="{{ config['hook_gpio'] }}"
-        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-    </div>
-
-    <!-- Hook Type -->
-    <div class="mb-2 lg:mb-4">
-      <label for="hook_type" class="block mb-1 lg:mb-2">Hook Type</label>
-      <input type="text" id="hook_type" name="hook_type" value="{{ config['hook_type'] }}"
-        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-    </div>
-
-    <!-- Invert Hook -->
-    <div class="mb-2 lg:mb-4">
-      <label for="invert_hook" class="block mb-1 lg:mb-2">Invert Hook</label>
-      <div class="flex items-center space-x-4">
-        {% if config.get('invert_hook', False) %}
-        <label class="inline-flex items-center">
-          <input type="radio" name="invert_hook" value="true" checked class="mr-1" />
-          <span>Yes</span>
-        </label>
-        <label class="inline-flex items-center">
-          <input type="radio" name="invert_hook" value="false" class="mr-1" />
-          <span>No</span>
-        </label>
-        {% else %}
-        <label class="inline-flex items-center">
-          <input type="radio" name="invert_hook" value="true" class="mr-1" />
-          <span>Yes</span>
-        </label>
-        <label class="inline-flex items-center">
-          <input type="radio" name="invert_hook" value="false" checked class="mr-1" />
-          <span>No</span>
-        </label>
-        {% endif %}
-      </div>
-      <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Set to "Yes" if your phone's hook behavior is reversed</span>
-    </div>
-
-    <!-- Hook Bounce Time -->
-    <div class="mb-2 lg:mb-4">
-      <label for="hook_bounce_time" class="block mb-1 lg:mb-2">Hook Bounce Time</label>
-      <input type="text" id="hook_bounce_time" name="hook_bounce_time" value="{{ config['hook_bounce_time'] }}"
-        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-    </div>
-
-    <!-- Record Greeting GPIO -->
-    <div class="mb-2 lg:mb-4">
-      <label for="record_greeting_gpio" class="block mb-1 lg:mb-2">Record Greeting Gpio</label>
-      <input type="text" id="record_greeting_gpio" name="record_greeting_gpio" value="{{ config['record_greeting_gpio'] }}"
-        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-    </div>
-
-    <!-- Record Greeting Type -->
-    <div class="mb-2 lg:mb-4">
-      <label for="record_greeting_type" class="block mb-1 lg:mb-2">Record Greeting Type</label>
-      <input type="text" id="record_greeting_type" name="record_greeting_type" value="{{ config['record_greeting_type'] }}"
-        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-    </div>
-
-    <!-- Record Greeting Bounce Time -->
-    <div class="mb-2 lg:mb-4">
-      <label for="record_greeting_bounce_time" class="block mb-1 lg:mb-2">Record Greeting Bounce Time</label>
-      <input type="text" id="record_greeting_bounce_time" name="record_greeting_bounce_time" value="{{ config['record_greeting_bounce_time'] }}"
-        class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
-    </div>
-  </div>
-</div>
 
   <!-- Reboot/Shutdown Settings Card -->
   <div class="card">

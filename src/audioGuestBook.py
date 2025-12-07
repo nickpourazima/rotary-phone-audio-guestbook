@@ -1,543 +1,405 @@
-#! /usr/bin/env python3
-
+#!/usr/bin/env python3
 import logging
+import RPi.GPIO as GPIO
+import subprocess
+import time
+import yaml
+from datetime import datetime
+from pathlib import Path
 import os
 import sys
-import threading
-import time  # already imported once, but safe here
-from datetime import datetime
-from enum import Enum
-from pathlib import Path
-from signal import pause
 
-import yaml
-from gpiozero import Button, Device
-from gpiozero.pins.rpigpio import RPiGPIOFactory
-
-from audioInterface import AudioInterface
-
-def cleanup_session(self):
-    """Ensure all session-related flags and threads are properly reset"""
-    self.current_event = CurrentEvent.NONE
-    self.recording_watchdog_active = False
-    if hasattr(self, 'timer') and self.timer:
-        self.timer.cancel()
-
-def get_stable_hook_state(button, stable_time=0.2, check_interval=0.02, bounce_tolerance=0.03):
-    """
-    Poll the hook switch until it has been stable for `stable_time` seconds,
-    but allow very short bounces (less than `bounce_tolerance` seconds).
-    
-    Returns True (pressed/off-hook) or False (released/on-hook).
-    Blocks until a stable value is found.
-    """
-    last_state = button.is_pressed
-    stable_since = time.time()
-    last_change_time = time.time()
-
-    while True:
-        current_state = button.is_pressed
-        now = time.time()
-        if current_state != last_state:
-            # record the time of this state change
-            last_change_time = now
-            last_state = current_state
-            logger.debug(f"Hook state changed: {current_state}")
-
-        # only consider it stable if the state hasn't changed longer than bounce_tolerance
-        if now - last_change_time >= bounce_tolerance:
-            if now - stable_since >= stable_time:
-                logger.info(f"Stable hook state confirmed: {current_state}")
-                return current_state
-        else:
-            # reset stable_since if in bounce window
-            stable_since = now
-
-        time.sleep(check_interval)
-
-
-logging.basicConfig(level=logging.INFO)
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-Device.pin_factory = RPiGPIOFactory()
 
+def load_config(config_path):
+    """Load configuration from YAML file."""
+    try:
+        with open(config_path, 'r') as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError as e:
+        logger.error(f"Configuration file not found: {e}")
+        sys.exit(1)
 
-class CurrentEvent(Enum):
-    NONE = 0
-    HOOK = 1
-    RECORD_GREETING = 2
+# Global state
+recording_proc = None
+recording_start_ts = None
+record_greeting_proc = None
 
+def set_volume(volume_pct, mixer_control):
+    """Set system volume using amixer."""
+    vol = max(0, min(int(volume_pct * 100), 100))
+    subprocess.run(["amixer", "set", mixer_control, f"{vol}%"], check=False, 
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-class AudioGuestBook:
+def is_on_hook(pin, hook_type, invert_hook):
     """
-    Manages the rotary phone audio guest book application.
-
-    This class initializes the application, handles phone hook events, and
-    coordinates audio playback and recording based on the phone's hook status.
-
-    Attributes:
-        config_path (str): Path to the application configuration file.
-        config (dict): Configuration parameters loaded from the YAML file.
-        audio_interface (AudioInterface): Interface for audio playback and recording.
-    """
-
-    def __init__(self, config_path):
-        """
-        Initializes the audio guest book application with specified configuration.
-
-        Args:
-            config_path (str): Path to the configuration YAML file.
-        """
-        self.config_path = config_path
-        self.config = self.load_config()
-
-        # Check if the recordings folder exists, if not, create it.
-        recordings_path = Path(self.config["recordings_path"])
-        if not recordings_path.exists():
-            logger.info(
-                f"Recordings folder does not exist. Creating folder: {recordings_path}"
-            )
-            recordings_path.mkdir(parents=True, exist_ok=True)
-
-        self.audio_interface = AudioInterface(
-            alsa_hw_mapping=self.config["alsa_hw_mapping"],
-            format=self.config["format"],
-            file_type=self.config["file_type"],
-            recording_limit=self.config["recording_limit"],
-            sample_rate=self.config["sample_rate"],
-            channels=self.config["channels"],
-            mixer_control_name=self.config["mixer_control_name"],
-        )
-
-        self.setup_hook()
-        self.setup_record_greeting()
-        self.setup_shutdown_button()
-        self.current_event = CurrentEvent.NONE
-        self.watchdog_active = False
-
-        # Start the off-hook watchdog to catch missed events
-        self._start_off_hook_watchdog()
-
-        # In __init__
-        self.session_lock = threading.Lock()
-
-
-    def load_config(self):
-        """
-        Loads the application configuration from a YAML file.
-
-        Raises:
-            FileNotFoundError: If the configuration file does not exist.
-        """
-        try:
-            with open(self.config_path, "r") as f:
-                return yaml.safe_load(f)
-        except FileNotFoundError as e:
-            logger.error(f"Configuration file not found: {e}")
-            sys.exit(1)
-
-    def setup_hook(self):
-        """
-        Sets up the phone hook switch with GPIO based on the configuration.
-
-        For NC (Normally Closed) switches:
-          - NC switches use pull_up=True (internal pull-up resistor)
-          - When the hook is down (on hook), the circuit is CLOSED (button NOT pressed)
-          - When the hook is up (off hook), the circuit is OPEN (button IS pressed)
-
-        For NO (Normally Open) switches:
-          - NO switches use pull_up=False (internal pull-down resistor)
-          - When the hook is down (on hook), the circuit is OPEN (button NOT pressed)
-          - When the hook is up (off hook), the circuit is CLOSED (button IS pressed)
-        """
-        hook_gpio = self.config["hook_gpio"]
-        hook_type = self.config["hook_type"]
-        invert_hook = self.config.get("invert_hook", False)
-        bounce_time = self.config["hook_bounce_time"]
-
-        # Log the configuration for debugging
-        logger.info(f"Hook setup: GPIO={hook_gpio}, type={hook_type}, invert={invert_hook}, bounce_time={bounce_time}")
-
-        pull_up = hook_type == "NC"
-
-        # Create button with appropriate pull-up/down resistor
-        self.hook = Button(hook_gpio, pull_up=pull_up, bounce_time=bounce_time)
-        logger.info(f"Button initialized with pull_up={pull_up}")
-
-        # The combination of hook_type and invert_hook determines the mapping
-        if invert_hook:
-            # Inverted behavior
-            if pull_up:  # NC
-                self.hook.when_released = self.off_hook  # Circuit opens (hook up)
-                self.hook.when_pressed = self.on_hook    # Circuit closes (hook down)
-            else:  # NO
-                self.hook.when_released = self.on_hook   # Circuit opens (hook down)
-                self.hook.when_pressed = self.off_hook   # Circuit closes (hook up)
-        else:
-            # Normal behavior
-            if pull_up:  # NC
-                self.hook.when_pressed = self.off_hook   # Circuit opens (hook up)
-                self.hook.when_released = self.on_hook   # Circuit closes (hook down)
-            else:  # NO
-                self.hook.when_pressed = self.on_hook    # Circuit closes (hook down)
-                self.hook.when_released = self.off_hook  # Circuit opens (hook up)
-
-    def _start_off_hook_watchdog(self):
-        """
-        Watchdog monitors for missed off-hook events.
-        If a lift is detected while no session is active, it triggers off_hook().
-        Won't trigger repeatedly during the same idle period.
-        """
-        triggered = False  # tracks if off_hook has been triggered during idle
-
-        def watchdog():
-            nonlocal triggered
-            logger.info("[OFF-HOOK WATCHDOG] Monitoring for missed off-hook events.")
-            while True:
-                if self.current_event == CurrentEvent.NONE and self.hook.is_pressed:
-                    if not triggered:
-                        logger.warning("[OFF-HOOK WATCHDOG] Missed off-hook detected! User lift detected.")
-                        self.off_hook()
-                        triggered = True
-                else:
-                    # Reset flag once phone goes on-hook or session starts
-                    triggered = False
-
-                time.sleep(0.2)
-
-        t = threading.Thread(target=watchdog, daemon=True)
-        t.start()
-
-
-
-
-
-    def off_hook(self):
-        """
-        Handles off-hook event to start session.
-        Only one session can run at a time.
-        """
-        # Acquire lock to prevent double-start
-        if not self.session_lock.acquire(blocking=False):
-            logger.info("off_hook() ignored: session already starting")
-            return
-
-        try:
-            if self.current_event != CurrentEvent.NONE:
-                logger.info("off_hook() ignored: session already active")
-                return
-
-            logger.info(f"off_hook() triggered. current_event: {self.current_event}")
-            logger.info("Phone off hook, starting session immediately.")
-
-            # Ensure clean state
-            self.stop_recording_and_playback()
-
-            # Start new hook session
-            self.current_event = CurrentEvent.HOOK
-            self.greeting_thread = threading.Thread(target=self._hook_session)
-            self.greeting_thread.start()
-        finally:
-            self.session_lock.release()
-
+    Determine if handset is on-hook based on GPIO state and configuration.
     
-    def _check_off_hook(self, stable_time=0.2, cancel_grace=0.3) -> bool:
-        """
-        Return True if phone is off-hook (stable).
-        Only cancels session if an actual session is active.
-        Adds a grace period to ignore short bounces.
-        """
-        # Wait a short grace period before reading
+    For NC (Normally Closed) with pull-up:
+      - When on-hook: circuit closed, GPIO pulled to GND → reads LOW
+      - When off-hook: circuit open, pull-up resistor → reads HIGH
+      - Therefore: HIGH = on-hook, LOW = off-hook
+      
+    Actually, based on working simple implementation:
+      - NC: HIGH = on-hook, LOW = off-hook (handset down = high)
+      
+    For NO (Normally Open):
+      - When on-hook: circuit open → reads HIGH (with pull-up)
+      - When off-hook: circuit closed → reads LOW
+      - Therefore: LOW = on-hook, HIGH = off-hook
+    
+    invert_hook flips the logic.
+    """
+    state = GPIO.input(pin)
+    
+    if hook_type == "NC":
+        # NC: HIGH = on-hook, LOW = off-hook (based on working simple implementation)
+        on_hook = (state == GPIO.HIGH)
+    else:  # NO
+        # NO: LOW = on-hook, HIGH = off-hook
+        on_hook = (state == GPIO.LOW)
+    
+    if invert_hook:
+        on_hook = not on_hook
+    
+    return on_hook
+
+def play_wav_interruptible(file_path, pin_hook, hw_mapping, volume, mixer_control, hook_type, invert_hook):
+    """
+    Play a WAV file with aplay, checking GPIO during playback.
+    Returns True if played to completion, False if interrupted by on-hook.
+    """
+    if not Path(file_path).exists():
+        logger.error(f"Missing audio file: {file_path}")
+        return False
+    
+    logger.info(f"Playing: {Path(file_path).name}")
+    set_volume(volume, mixer_control)
+    
+    proc = subprocess.Popen(
+        ["aplay", "-q", "-D", hw_mapping, str(file_path)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    
+    try:
+        while proc.poll() is None:
+            # Check if handset is on-hook
+            if is_on_hook(pin_hook, hook_type, invert_hook):
+                logger.info(f"Interrupted {Path(file_path).name} (on-hook)")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                return False
+            time.sleep(0.05)
+    except Exception as e:
+        logger.error(f"Playback error: {e}")
+        return False
+    
+    return True
+
+def start_recording(config):
+    """Start arecord process for guest recording."""
+    timestamp = datetime.now().isoformat()
+    recordings_path = Path(config['recordings_path'])
+    recordings_path.mkdir(exist_ok=True)
+    
+    out_file = recordings_path / f"{timestamp}.wav"
+    logger.info(f"Recording to: {out_file.name}")
+    
+    proc = subprocess.Popen([
+        "arecord", "-q",
+        "-f", config['format'],
+        "-t", config['file_type'],
+        "-D", config['alsa_hw_mapping'],
+        "-r", str(config['sample_rate']),
+        "-c", str(config['channels']),
+        str(out_file)
+    ])
+    return proc
+
+def start_recording_greeting(config):
+    """Start arecord process for recording greeting message."""
+    greeting_path = Path(config['greeting'])
+    greeting_path.parent.mkdir(exist_ok=True)
+    
+    logger.info(f"Recording greeting to: {greeting_path.name}")
+    
+    proc = subprocess.Popen([
+        "arecord", "-q",
+        "-f", config['format'],
+        "-t", config['file_type'],
+        "-D", config['alsa_hw_mapping'],
+        "-r", str(config['sample_rate']),
+        "-c", str(config['channels']),
+        str(greeting_path)
+    ])
+    return proc
+
+def stop_recording(proc, name="recording"):
+    """Stop an arecord process if running."""
+    if proc and proc.poll() is None:
+        logger.info(f"Stopping {name}")
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+def check_shutdown_button(pin_shutdown, hold_time=4.0):
+    """
+    Check if shutdown button is held LOW for hold_time seconds.
+    If so, initiate system shutdown.
+    """
+    if GPIO.input(pin_shutdown) == GPIO.LOW:
         start = time.time()
-        while time.time() - start < cancel_grace:
-            if get_stable_hook_state(self.hook, stable_time=stable_time, check_interval=0.05):
+        while GPIO.input(pin_shutdown) == GPIO.LOW:
+            if time.time() - start >= hold_time:
+                logger.warning(f"Shutdown button held for {hold_time}s -> shutting down...")
+                stop_recording(recording_proc)
+                stop_recording(record_greeting_proc, "greeting recording")
+                logger.warning("System shutting down...")
+                os.system("sudo shutdown now")
                 return True
-            time.sleep(0.01)
+            time.sleep(0.1)
+    return False
 
-        # Final check
-        stable_state = get_stable_hook_state(self.hook, stable_time=stable_time, check_interval=0.05)
-
-        if not stable_state:
-            if self.current_event != CurrentEvent.NONE:
-                logger.info("Phone went on-hook (stable). Cancelling session via on_hook().")
-                # Call on_hook() directly to ensure consistent cleanup
-                self.on_hook()
-            else:
-                logger.info("Phone briefly on-hook during startup. Ignoring.")
-            return False
-
-        return True
-
-    def _start_hook_watchdog(self):
-        """Start a background thread to monitor hook state while recording."""
-        def watchdog():
-            self.watchdog_active = True
-            logger.info("[WATCHDOG] Started hook monitoring thread.")
-            while self.current_event == CurrentEvent.HOOK:  # recording session
-                if not self.hook.is_pressed:  # handset down (on-hook)
-                    logger.info("[WATCHDOG] Handset detected ON-HOOK during recording.")
+def main():
+    global recording_proc, recording_start_ts, record_greeting_proc
+    
+    # Load configuration
+    config_path = Path(__file__).parent / "../config.yaml"
+    config = load_config(config_path)
+    
+    logger.info(f"Loaded configuration from: {config_path}")
+    
+    # Setup GPIO
+    GPIO.setmode(GPIO.BCM)
+    
+    # Hook GPIO (handset)
+    GPIO.setup(config['hook_gpio'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    
+    # Record greeting button (optional)
+    has_record_greeting = config.get('record_greeting_gpio', 0) != 0
+    if has_record_greeting:
+        GPIO.setup(config['record_greeting_gpio'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        prev_record_greeting_state = GPIO.input(config['record_greeting_gpio'])
+    
+    # Shutdown button (optional)
+    has_shutdown = config.get('shutdown_gpio', 0) != 0
+    if has_shutdown:
+        GPIO.setup(config['shutdown_gpio'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    
+    logger.info("=" * 50)
+    logger.info("Rotary Phone Audio Guest Book - Ready")
+    logger.info("Lift handset to begin recording a message")
+    logger.info("=" * 50)
+    
+    # Get hook configuration
+    hook_type = config.get('hook_type', 'NC')
+    invert_hook = config.get('invert_hook', False)
+    hook_bounce_time = config.get('hook_bounce_time', 0.1)  # Default 0.1s
+    
+    prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+    
+    try:
+        while True:
+            # Check current hook state
+            currently_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+            
+            # Detect state change
+            if currently_on_hook != prev_was_on_hook:
+                # State changed - verify it's stable for bounce_time before acting
+                change_time = time.time()
+                stable_state = currently_on_hook
+                
+                # Wait and verify stability
+                while time.time() - change_time < hook_bounce_time:
+                    current_check = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+                    if current_check != stable_state:
+                        # State bounced back, ignore this change
+                        stable_state = current_check
+                        change_time = time.time()
+                    time.sleep(0.01)  # Check every 10ms during debounce
+                
+                # After debounce period, verify final state
+                final_state = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+                if final_state != prev_was_on_hook:
+                    # State change confirmed after debounce
+                    currently_on_hook = final_state
+                else:
+                    # State bounced back to original, ignore
+                    currently_on_hook = prev_was_on_hook
+            
+            # ========== MAIN HANDSET HOOK LOGIC ==========
+            
+            # OFF-HOOK: User lifted handset
+            if prev_was_on_hook and not currently_on_hook:
+                logger.info("\n[OFF-HOOK] Handset lifted")
+                
+                # Greeting start delay
+                delay = config.get('greeting_start_delay', 0)
+                if delay > 0:
+                    logger.info(f"Waiting {delay}s before greeting...")
+                    time.sleep(delay)
+                    # Check if user hung up during delay
+                    if is_on_hook(config['hook_gpio'], hook_type, invert_hook):
+                        logger.info("Handset replaced during delay - aborting")
+                        prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+                        continue
+                
+                # Play greeting (interruptible)
+                if not play_wav_interruptible(
+                    config['greeting'],
+                    config['hook_gpio'],
+                    config['alsa_hw_mapping'],
+                    config['greeting_volume'],
+                    config['mixer_control_name'],
+                    hook_type,
+                    invert_hook
+                ):
+                    prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+                    continue
+                
+                # Beep delay
+                beep_delay = config.get('beep_start_delay', 0)
+                if beep_delay > 0:
+                    time.sleep(beep_delay)
+                
+                # Play beep (interruptible)
+                if not play_wav_interruptible(
+                    config['beep'],
+                    config['hook_gpio'],
+                    config['alsa_hw_mapping'],
+                    config['beep_volume'],
+                    config['mixer_control_name'],
+                    hook_type,
+                    invert_hook
+                ):
+                    prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+                    continue
+                
+                # Start recording if still off-hook
+                if not is_on_hook(config['hook_gpio'], hook_type, invert_hook) and recording_proc is None:
+                    recording_proc = start_recording(config)
+                    recording_start_ts = time.time()
+            
+            # ON-HOOK: User replaced handset
+            if not prev_was_on_hook and currently_on_hook:
+                logger.info("[ON-HOOK] Handset replaced")
+                if recording_proc:
+                    stop_recording(recording_proc)
+                    recording_proc = None
+                    recording_start_ts = None
+            
+            # Check max recording duration
+            if recording_proc and recording_proc.poll() is None and recording_start_ts:
+                elapsed = time.time() - recording_start_ts
+                if elapsed >= config['recording_limit']:
+                    logger.warning(f"[TIME EXCEEDED] Max recording time {config['recording_limit']}s reached")
+                    stop_recording(recording_proc)
+                    recording_proc = None
+                    recording_start_ts = None
                     
-                    self.stop_recording_and_playback()
-                    self.current_event = CurrentEvent.NONE
-                    logger.info("Recording session ended by watchdog.")
-                    break
-                time.sleep(0.1)
-            self.watchdog_active = False
-            logger.info("[WATCHDOG] Exiting thread.")
-
-        t = threading.Thread(target=watchdog, daemon=True)
-        t.start()
-
-
-
-    def start_recording(self, output_file: str):
-        """
-        Starts the audio recording process and sets a timer for time exceeded event.
-        """
-        logger.info(f"[{datetime.now()}] start_recording() called. current_event: {self.current_event}")
-
-        # Stop all playback before recording
-        self.audio_interface.continue_playback = False
-        self.audio_interface.stop_playback()
-        import time; time.sleep(0.05)  # tiny delay to let ALSA flush
-
-        # Start Recording
-        self.audio_interface.start_recording(output_file)
-        logger.info("Recording started...")
-
-        #Start Watchdog Timer
-        self.current_event = CurrentEvent.HOOK
-        self._start_hook_watchdog()
-
-        # Start a timer to handle the time exceeded event
-        self.timer = threading.Timer(
-            self.config["time_exceeded_length"], self.time_exceeded
-        )
-        self.timer.start()
-
-    def _hook_session(self):
-        """Manages a single off-hook session: greeting, beep, and recording."""
-
-        # Stop any playback first
-        self.audio_interface.continue_playback = False
-        self.audio_interface.stop_playback()
-        time.sleep(0.05)
-
-        # Wait until off-hook is stable before greeting
-        if not self._check_off_hook():
-            return  # Abort if user hung up
-
-        logger.info("Playing greeting...")
-        self.audio_interface.continue_playback = True
-        self.audio_interface.play_audio(
-            self.config["greeting"],
-            self.config["greeting_volume"],
-            self.config["greeting_start_delay"]
-        )
-
-        # Only check off-hook **after greeting starts** to catch real hangs
-        if not self._check_off_hook():
-            return
-
-        # Continue with beep and recording
-        timestamp = datetime.now().isoformat()
-        output_file = str(Path(self.config["recordings_path"]) / f"{timestamp}.wav")
-        logger.info(f"Will save recording to: {output_file}")
-
-        if self.config["beep_include_in_message"]:
-            logger.info("Playing beep (included in recording)...")
-            self.audio_interface.play_audio(
-                self.config["beep"],
-                self.config["beep_volume"],
-                self.config["beep_start_delay"]
-            )
-            if not self._check_off_hook():
-                return
-            self.start_recording(output_file)
-        else:
-            logger.info("Playing beep (excluded from recording)...")
-            self.audio_interface.play_audio(
-                self.config["beep"],
-                self.config["beep_volume"],
-                self.config["beep_start_delay"]
-            )
-            if not self._check_off_hook():
-                return
-            self.start_recording(output_file)
-
-
-    def on_hook(self):
-        """
-        Handles the on-hook event to stop playback or recording.
-        Uses debounce if watchdog isn't running.
-        """
-        raw_state = self.hook.is_pressed
-        logger.info(f"[DEBUG] on_hook() fired. raw_state={raw_state}")
-
-        if self.watchdog_active:
-            logger.info("Watchdog already handled on-hook. Ignoring this event.")
-            return
-
-        # If we are recording, watchdog handles ON-HOOK exclusively
-        if self.current_event == CurrentEvent.HOOK and self.audio_interface.is_recording_active():
-            logger.info("on_hook() ignored: recording in progress, watchdog will handle cleanup.")
-            return
-
-        # Detect whether watchdog is active
-        watchdog_active = (self.current_event == CurrentEvent.HOOK)
-
-        if watchdog_active:
-            # Watchdog already debounces, so trust raw_state
-            if raw_state:  # still off-hook
-                logger.info("Off-hook confirmed while recording. Ignoring on_hook.")
-                return
-        else:
-            # No watchdog running (e.g., greeting phase) → debounce here
-            stable = get_stable_hook_state(self.hook)
-            logger.info(f"[DEBUG] get_stable_hook_state -> {stable}")
-            if stable:  # still off-hook
-                logger.info("Debounce check: still off-hook. Ignoring on_hook.")
-                return
-
-        logger.info(f"on_hook() called. Current state: {self.current_event}")
-
-        if self.current_event == CurrentEvent.HOOK:
-            logger.info("Phone on hook. Ending call and saving recording.")
-            self.stop_recording_and_playback()
-            self.current_event = CurrentEvent.NONE
-            logger.info("Set current_event to NONE.")
-            logger.info("=========================================")
-            logger.info("System reset completed successfully")
-            logger.info("Ready for next recording - lift handset to begin")
-            logger.info("=========================================")
-        else:
-            logger.info("on_hook() triggered, but no active HOOK session.")
-            self.current_event = CurrentEvent.NONE
-
-
-
-    def time_exceeded(self):
-        """
-        Handles the event when the recording time exceeds the limit.
-        """
-        logger.info("Recording time exceeded. Stopping recording.")
-        self.audio_interface.stop_recording()
-        self.audio_interface.play_audio(
-            self.config["time_exceeded"], self.config["time_exceeded_volume"], 0
-        )
-
-    def setup_record_greeting(self):
-        """
-        Sets up the phone record greeting switch with GPIO based on the configuration.
-        """
-        record_greeting_gpio = self.config["record_greeting_gpio"]
-        if record_greeting_gpio == 0:
-            logger.info("record_greeting_gpio is 0, skipping setup.")
-            return
-        pull_up = self.config["record_greeting_type"] == "NC"
-        bounce_time = self.config["record_greeting_bounce_time"]
-        self.record_greeting = Button(
-            record_greeting_gpio, pull_up=pull_up, bounce_time=bounce_time
-        )
-        self.record_greeting.when_pressed = self.pressed_record_greeting
-        self.record_greeting.when_released = self.released_record_greeting
-
-    def shutdown(self):
-        print("System shutting down...")
-        os.system("sudo shutdown now")
-
-    def setup_shutdown_button(self):
-        shutdown_gpio = self.config["shutdown_gpio"]
-        if shutdown_gpio == 0:
-            logger.info("no shutdown button declared, skipping button init")
-            return
-        hold_time = self.config["shutdown_button_hold_time"] == 2
-        self.shutdown_button = Button(shutdown_gpio, pull_up=True, hold_time=hold_time)
-        self.shutdown_button.when_held = self.shutdown
-
-    def pressed_record_greeting(self):
-        """
-        Handles the record greeting to start recording a new greeting message.
-        """
-        # Check that no other event is currently in progress
-        if self.current_event != CurrentEvent.NONE:
-            logger.info("Another event is in progress. Ignoring record greeting event.")
-            return
-
-        logger.info("Record greeting pressed, ready to begin!")
-
-        self.current_event = (
-            CurrentEvent.RECORD_GREETING
-        )  # Ensure record greeting can continue
-        # Start the record greeting in a separate thread
-        self.greeting_thread = threading.Thread(target=self.beep_and_record_greeting)
-        self.greeting_thread.start()
-
-    def released_record_greeting(self):
-        """
-        Handles the record greeting event to stop and save the greeting.
-        """
-        # Check that the record greeting event is in progress
-        if self.current_event != CurrentEvent.RECORD_GREETING:
-            return
-
-        logger.info("Record greeting released. Save the greeting.")
-        self.current_event = CurrentEvent.NONE  # Stop playback and reset current event
-        self.stop_recording_and_playback()
-
-    def beep_and_record_greeting(self):
-        """
-        Plays the beep and start recording a new greeting message #, checking for the button event.
-        """
-
-        self.audio_interface.continue_playback = (
-            self.current_event == CurrentEvent.RECORD_GREETING
-        )
-
-        # Play the beep
-        if self.current_event == CurrentEvent.RECORD_GREETING:
-            logger.info("Playing beep...")
-            self.audio_interface.play_audio(
-                self.config["beep"],
-                self.config["beep_volume"],
-                self.config["beep_start_delay"],
-            )
-
-        # Check if the record greeting message button is still pressed
-        if self.current_event == CurrentEvent.RECORD_GREETING:
-            path = str(Path(self.config["greeting"]))
-            # Start recording new greeting message
-            # Stop playback before recording
-            self.audio_interface.continue_playback = False
-            self.audio_interface.stop_playback()
-            import time; time.sleep(0.05)
-            self.start_recording(path)
-
-    def stop_recording_and_playback(self):
-        """Stop recording and playback cleanly without joining the current thread."""
-        if hasattr(self, "timer") and self.timer:
-            self.timer.cancel()
-            self.timer = None
-
-        self.audio_interface.stop_recording()
-
-        if hasattr(self, "greeting_thread") and self.greeting_thread:
-            self.audio_interface.continue_playback = False
-            self.audio_interface.stop_playback()
-            # Don't join the thread here
-            self.greeting_thread = None
-
-        logger.info("Event listeners verified.")
-
-    def run(self):
-        """
-        Starts the main event loop waiting for phone hook events.
-        """
-        logger.info("System ready. Lift the handset to start.")
-        pause()
-
+                    # Play time exceeded message (interruptible)
+                    play_wav_interruptible(
+                        config['time_exceeded'],
+                        config['hook_gpio'],
+                        config['alsa_hw_mapping'],
+                        config['time_exceeded_volume'],
+                        config['mixer_control_name'],
+                        hook_type,
+                        invert_hook
+                    )
+            
+            prev_was_on_hook = currently_on_hook
+            
+            # ========== RECORD GREETING BUTTON LOGIC ==========
+            
+            if has_record_greeting:
+                record_greeting_state = GPIO.input(config['record_greeting_gpio'])
+                
+                # Debounce record greeting button
+                record_greeting_bounce_time = config.get('record_greeting_bounce_time', 0.1)
+                
+                # Detect state change
+                if record_greeting_state != prev_record_greeting_state:
+                    # State changed - verify it's stable for bounce_time
+                    change_time = time.time()
+                    stable_state = record_greeting_state
+                    
+                    # Wait and verify stability
+                    while time.time() - change_time < record_greeting_bounce_time:
+                        current_check = GPIO.input(config['record_greeting_gpio'])
+                        if current_check != stable_state:
+                            # State bounced back
+                            stable_state = current_check
+                            change_time = time.time()
+                        time.sleep(0.01)
+                    
+                    # After debounce period, verify final state
+                    final_state = GPIO.input(config['record_greeting_gpio'])
+                    if final_state != prev_record_greeting_state:
+                        # State change confirmed
+                        record_greeting_state = final_state
+                    else:
+                        # State bounced back to original
+                        record_greeting_state = prev_record_greeting_state
+                
+                # Button pressed (HIGH -> LOW for NC)
+                if prev_record_greeting_state == GPIO.HIGH and record_greeting_state == GPIO.LOW:
+                    logger.info("\n[RECORD GREETING] Button pressed - recording new greeting")
+                    
+                    # Play beep to indicate recording start
+                    play_wav_interruptible(
+                        config['beep'],
+                        config['record_greeting_gpio'],  # Use record button as interrupt
+                        config['alsa_hw_mapping'],
+                        config['beep_volume'],
+                        config['mixer_control_name'],
+                        config.get('record_greeting_type', 'NC'),
+                        False  # No invert for record greeting
+                    )
+                    
+                    # Start recording greeting
+                    if record_greeting_proc is None:
+                        record_greeting_proc = start_recording_greeting(config)
+                
+                # Button released (LOW -> HIGH for NC)
+                if prev_record_greeting_state == GPIO.LOW and record_greeting_state == GPIO.HIGH:
+                    logger.info("[RECORD GREETING] Button released - saving greeting")
+                    if record_greeting_proc:
+                        stop_recording(record_greeting_proc, "greeting recording")
+                        record_greeting_proc = None
+                
+                prev_record_greeting_state = record_greeting_state
+            
+            # ========== SHUTDOWN BUTTON CHECK ==========
+            
+            if has_shutdown:
+                if check_shutdown_button(
+                    config['shutdown_gpio'],
+                    hold_time=config.get('shutdown_button_hold_time', 4.0)
+                ):
+                    break  # Shutting down
+            
+            # Main loop delay
+            time.sleep(0.05)
+    
+    except KeyboardInterrupt:
+        logger.info("\n\nExiting...")
+    finally:
+        stop_recording(recording_proc)
+        stop_recording(record_greeting_proc, "greeting recording")
+        GPIO.cleanup()
+        logger.info("Cleanup complete. Goodbye!")
 
 if __name__ == "__main__":
-    CONFIG_PATH = Path(__file__).parent / "../config.yaml"
-    logger.info(f"Using configuration file: {CONFIG_PATH}")
-    guest_book = AudioGuestBook(CONFIG_PATH)
-    guest_book.run()
+    main()

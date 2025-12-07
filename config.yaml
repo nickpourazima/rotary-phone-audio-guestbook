@@ -21,7 +21,6 @@ record_greeting_bounce_time: 0.1 # float or None
 beep: /home/admin/rotary-phone-audio-guestbook/sounds/beep.wav
 beep_volume: 1.0
 beep_start_delay: 0.0
-beep_include_in_message: true
 
 # The greeting sound is played when the user picks up the phone
 greeting: /home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav
@@ -33,7 +32,6 @@ time_exceeded: /home/admin/rotary-phone-audio-guestbook/sounds/time_exceeded.wav
 time_exceeded_volume: 1.0
 
 recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
-time_exceeded_length: 300
 
 shutdown_gpio: 0 #Set GPIO pin here --> Note: Pin is active LOW, pull Pin to GND to activate shutdown
 shutdown_button_hold_time: 2 # default 2 seconds
