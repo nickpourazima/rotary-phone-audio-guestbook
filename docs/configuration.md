@@ -124,7 +124,6 @@ To record a custom greeting:
 - `beep`: Path to the beep audio file
 - `beep_volume`: Volume level for the beep
 - `beep_start_delay`: Delay in seconds before playing the beep
-- `beep_include_in_message`: Whether to include the beep in the recorded message (true or false)
 
 ### Time Exceeded Message
 
@@ -135,7 +134,6 @@ To record a custom greeting:
 
 - `recordings_path`: Directory where recordings will be saved
 - `recording_limit`: Maximum recording length in seconds
-- `time_exceeded_length`: Time in seconds after which the time exceeded message plays
 
 ## System Service
 
