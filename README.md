@@ -26,9 +26,9 @@ Inspired by my upcoming wedding, I created a DIY audio guestbook using a rotary 
 
 ### Prepare Your Rotary Phone
 
-1. Follow the [Hardware](docs/hardware.md) section for detailed instructions on wiring your rotary phone to the Raspberry Pi.
+1. Follow the [Hardware](docs/hardware.md) section for detailed instructions on wiring your rotary phone to the Raspberry Pi. This is a crucial first step before proceeding to software installation.
 
-_Note: This is a crucial first step before proceeding to software installation._
+_Note: No hardware support will be given as it is very difficult to replicate setups beyond the simple NC/NO switch._
 
 ### Download and Install the Custom Image
 
@@ -69,10 +69,9 @@ Your audio guest book is now ready for test/deployment! For advanced configurati
 
 ## Support
 
-It's great to see this project growing. Special thanks to @svartis, @jmdevita, and @Mevel!
+It's great to see this project growing. Big thank you to the current maintainer @[sascha-schieferdecker](https://github.com/sascha-schieferdecker). Special thanks to @[svartis](https://github.com/svartis), @[jmdevita](https://github.com/jmdevita), and @[Mevel](https://github.com/Mevel)!
 
-If this code helped you or if you have feedback, I'd be happy to [hear about it](mailto:dillpicholas@duck.com)!
-Feel like saying thanks? You can [buy me a coffee](https://ko-fi.com/dillpicholas)☕.
+If this code helped you or if you have feedback, feel free to submit a [topic for discussion](https://github.com/nickpourazima/rotary-phone-audio-guestbook/discussions).
 
 ## Star History
 
