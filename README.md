@@ -50,7 +50,8 @@ With your hardware prepared, install the custom Raspberry Pi image that contains
    password: password
    ```
 5. Set up your WiFi network connection
-6. Insert the SD card into your Raspberry Pi and power it on
+6. Activate SSH if you are planning to activate the optional hotspot
+7. Insert the SD card into your Raspberry Pi and power it on
 
 ### Initial Configuration
 
