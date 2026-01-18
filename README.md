@@ -40,6 +40,8 @@ With your hardware prepared, install the custom Raspberry Pi image that contains
 
    <img src="images/rpi_imager_custom.png" width="50%" height="50%">
 
+   Hint: If using Raspberry Pi Imager Version 2, make sure to use Version 2.0.2 or later, as it is not possible to set a WiFi-password with 2.0.0 or 2.0.1.
+
 4. Configure the following credentials when prompted:
    ```bash
    username: admin
@@ -62,6 +64,33 @@ Once you've completed the hardware setup and installed the image:
    ![image](images/webserver_settings_light.png)
 
 Your audio guest book is now ready for test/deployment! For advanced configuration options and detailed explanations of all settings, refer to the [Configuration](docs/configuration.md) documentation.
+
+## Optional: Hotspot-Setup
+
+As of release 1.0.6, it is possible to set up hotspot WiFi access, that automatically opens if your set WiFi network is not in range. For this to work, you have to SSH once into your Rasperry Pi and set the WiFi region:
+
+```bash
+sudo raspi-config
+```
+
+Then choose "Localisation Options" > "WLAN-Country" and set your country. 
+
+After that run the Setup for the auto-hotspot:
+
+```bash
+sudo ~/Autohotspot/autohotspot-setup.sh
+```
+Choose option 2, press "Enter" after the setup. Select option 8 to exit the setup.
+
+Reboot afterwards. That's it.
+
+The Hotspots WiFi SSID name is: RPiHotspot
+The WiFi password is: 1234567890
+Access Point IP Address for SSH: 10.0.0.5
+
+So the web interface of your guestbook is http://10.0.0.5:8080
+
+
 
 ## [Software](docs/software.md)
 
