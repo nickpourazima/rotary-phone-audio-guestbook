@@ -40,7 +40,9 @@ With your hardware prepared, install the custom Raspberry Pi image that contains
 
    <img src="images/rpi_imager_custom.png" width="50%" height="50%">
 
-   Hint: If using Raspberry Pi Imager Version 2, make sure to use Version 2.0.2 or later, as it is not possible to set a WiFi-password with 2.0.0 or 2.0.1.
+   Hint: Please use Raspberry Pi Imager Version 1.9.6 until the customisation in Version 2.x is fixed
+
+   https://github.com/raspberrypi/rpi-imager/releases/tag/v1.9.6
 
 4. Configure the following credentials when prompted:
    ```bash
