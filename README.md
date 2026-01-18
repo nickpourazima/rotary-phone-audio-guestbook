@@ -67,7 +67,9 @@ Your audio guest book is now ready for test/deployment! For advanced configurati
 
 ## Optional: Hotspot-Setup
 
-As of release 1.0.6, it is possible to set up hotspot WiFi access, that automatically opens if your set WiFi network is not in range. For this to work, you have to SSH once into your Rasperry Pi and set the WiFi region:
+As of release 1.0.6 and thanks to https://github.com/RaspberryConnect/AutoHotspot-Installer, it is possible to set up hotspot WiFi access, that automatically opens if your set WiFi network is not in range. 
+
+For this to work, you have to SSH once into your Rasperry Pi and set the WiFi region:
 
 ```bash
 sudo raspi-config
@@ -84,13 +86,13 @@ Choose option 2, press "Enter" after the setup. Select option 8 to exit the setu
 
 Reboot afterwards. That's it.
 
-The Hotspots WiFi SSID name is: RPiHotspot
+```
+WiFi SSID name is: RPiHotspot
 The WiFi password is: 1234567890
 Access Point IP Address for SSH: 10.0.0.5
+```
 
 So the web interface of your guestbook is http://10.0.0.5:8080
-
-
 
 ## [Software](docs/software.md)
 
