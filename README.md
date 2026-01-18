@@ -53,6 +53,15 @@ With your hardware prepared, install the custom Raspberry Pi image that contains
 6. Activate SSH if you are planning to activate the optional hotspot
 7. Insert the SD card into your Raspberry Pi and power it on
 
+**Should the connection to the WiFi fail, the Raspberry Pi will open the hotspot as described below. This takes a while, so give it some time.** 
+
+```
+WiFi SSID name is: RPiHotspot
+The WiFi password is: 1234567890
+Access Point IP Address for SSH: 10.0.0.5
+Web interface of your guestbook is http://10.0.0.5:8080
+```
+
 ### Initial Configuration
 
 Once you've completed the hardware setup and installed the image:
@@ -87,15 +96,22 @@ sudo ~/Autohotspot/autohotspot-setup.sh
 ```
 Choose option 2, press "Enter" after the setup. Select option 8 to exit the setup.
 
-Reboot afterwards. That's it.
-
 ```
 WiFi SSID name is: RPiHotspot
 The WiFi password is: 1234567890
 Access Point IP Address for SSH: 10.0.0.5
+Web interface of your guestbook is http://10.0.0.5:8080
 ```
 
-So the web interface of your guestbook is http://10.0.0.5:8080
+Reboot afterwards. That's it.
+
+If you did not set up the WiFi for your home network correctly, you can also do this with the setup script:
+
+```bash
+sudo ~/Autohotspot/autohotspot-setup.sh
+```
+
+Choose option 5, enter your credentials and reboot.
 
 ## [Software](docs/software.md)
 
