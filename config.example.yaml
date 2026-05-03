@@ -39,3 +39,7 @@ time_exceeded_volume: 1.0
 recordings_path: __INSTALL_DIR__/recordings
 shutdown_gpio: 0 #Set GPIO pin here --> Note: Pin is active LOW, pull Pin to GND to activate shutdown
 shutdown_button_hold_time: 2 # default 2 seconds
+
+# UI Customizations
+ui:
+  title: Audio Guestbook # Page title displayed in browser and header
