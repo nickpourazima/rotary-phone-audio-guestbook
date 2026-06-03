@@ -117,6 +117,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: guestbook-image
+          retention-days: 7
           path: |
             ${{ steps.pack.outputs.file }}
             ${{ steps.pack.outputs.file }}.sha256
