@@ -121,8 +121,20 @@ fi
 log "Setting WiFi country to ${WIFI_COUNTRY}"
 if command -v raspi-config >/dev/null; then
     raspi-config nonint do_wifi_country "${WIFI_COUNTRY}" || \
-        warn "raspi-config could not set the country."
+        warn "raspi-config could not set the country (expected inside a build chroot)."
 fi
+# Persist the regulatory domain via the kernel cmdline too. This works offline
+# in a build chroot (no netlink needed) and guarantees the regdom on the real Pi.
+for cl in /boot/firmware/cmdline.txt /boot/cmdline.txt; do
+    [ -f "$cl" ] || continue
+    if grep -q 'cfg80211.ieee80211_regdom=' "$cl"; then
+        sed -i "s/cfg80211.ieee80211_regdom=[A-Za-z0-9]*/cfg80211.ieee80211_regdom=${WIFI_COUNTRY}/" "$cl"
+    else
+        sed -i "s/\$/ cfg80211.ieee80211_regdom=${WIFI_COUNTRY}/" "$cl"
+    fi
+    log "Set kernel regdom in ${cl}"
+    break
+done
 systemd_running && { rfkill unblock wifi || true; }
 
 # ---------------------------------------------------------------------------
