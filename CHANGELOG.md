@@ -33,8 +33,7 @@ and the release image is produced reproducibly in CI, so no hand-configured
   customisation is disabled for custom images. Raspberry Pi OS's interactive
   first-boot user setup (`userconfig.service`) is disabled so a headless boot
   completes without waiting on the console. The hotspot uses WPA2 (AES) on
-  channel 1 for universal client compatibility. A `custom.toml` can
-  pre-configure WiFi/login before first boot.
+  channel 1 for universal client compatibility.
 
 ### Changed
 

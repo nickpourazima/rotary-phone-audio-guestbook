@@ -40,7 +40,7 @@ The image is based on **Raspberry Pi OS Lite (32-bit, Debian 13 "Trixie")** and 
 2. (Optional) Verify the download against the published `.sha256` file: `sha256sum -c <file>.gz.sha256`
 3. Flash the `.img.gz` to an SD card with Raspberry Pi Imager (choose **"Use custom"**) or BalenaEtcher. Both read the compressed image directly and decompress while writing, so there is no need to extract it first.
 
-   > Note: the Imager's **OS customisation** (username, WiFi, SSH) is **disabled for custom images** — that is expected. This image already ships ready to use (see below), and you can optionally pre-configure it with a `custom.toml` file.
+   > Note: the Imager's **OS customisation** (username, WiFi, SSH) is **disabled for custom images** — that is expected. This image already ships ready to use (see below), and you configure WiFi over SSH after first boot.
 
 4. Insert the SD card into your Raspberry Pi and power it on. Give it a minute on first boot.
 
@@ -51,33 +51,6 @@ The image boots ready to use:
 - **WiFi:** if you didn't pre-configure a network, the Pi opens its own hotspot so you can reach it (see [Hotspot](#hotspot-automatic-wifi-fallback)). Connect to `RPiHotspot`, then `ssh pi@10.0.0.5` and add your network with `sudo nmcli device wifi connect "<SSID>" password "<password>"`.
 
 **Change the default password** as soon as you log in: `passwd`.
-
-#### Optional: pre-configure WiFi/login before first boot
-
-Since Imager customisation is unavailable, you can drop a `custom.toml` file in the SD card's `bootfs` partition (Raspberry Pi OS applies it on first boot). On macOS/Linux, after flashing:
-
-```
-config_version = 1
-[system]
-hostname = "guestbook"
-[user]
-name = "admin"
-password = "your-password"
-password_encrypted = false
-[ssh]
-enabled = true
-password_authentication = true
-[wlan]
-ssid = "YourWiFi"
-password = "YourWiFiPassword"
-password_encrypted = false
-country = "DE"
-[locale]
-keymap = "de"
-timezone = "Europe/Berlin"
-```
-
-Save it as `custom.toml` (no `.txt` extension) in the boot partition, adjust the values, then boot. The WiFi password must be plain text (`password_encrypted = false`).
 
 ### Initial Configuration
 
@@ -97,7 +70,7 @@ Your audio guest book is now ready for test/deployment! For advanced configurati
 
 The guestbook uses **NetworkManager's built-in access-point mode** to provide a fallback hotspot. There is nothing to install and no interactive setup — it just works out of the box.
 
-How it works: on boot the Pi tries to join the WiFi network you configured (via `custom.toml`, or later over SSH). If no known network is in range, it automatically brings up its own access point on channel 1 so you can still reach the device.
+How it works: on boot the Pi tries to join a WiFi network you've added over SSH. If no known network is in range, it automatically brings up its own access point on channel 1 so you can still reach the device.
 
 ```
 WiFi SSID name is: RPiHotspot
@@ -106,7 +79,7 @@ Access Point IP Address for SSH: 10.0.0.5
 Web interface of your guestbook is http://10.0.0.5:8080
 ```
 
-**WiFi country:** the image ships with a default regulatory domain (`DE`) baked in, so the access point starts out of the box. To use a different region, either set `country` in a `custom.toml` before first boot, or run `sudo raspi-config nonint do_wifi_country <CC>` (e.g. `US`) and reboot.
+**WiFi country:** the image ships with a default regulatory domain (`DE`) baked in, so the access point starts out of the box. To use a different region, run `sudo raspi-config nonint do_wifi_country <CC>` (e.g. `US`) and reboot.
 
 **Adding or changing a WiFi network later** — SSH into the Pi and run:
 

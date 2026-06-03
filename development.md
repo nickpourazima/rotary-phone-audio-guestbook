@@ -94,6 +94,25 @@ For quick web-UI iteration you can also run the server directly:
 flask --app webserver/server.py run -h 0.0.0.0 -p 8080
 ```
 
+## Building and testing the image locally
+
+Two helper scripts under [`tools/`](../tools) let you build and inspect the release image on your own machine (macOS with OrbStack/Docker, or Linux) without waiting for CI. They mirror the CI workflow: download the pinned Trixie base image, run `install.sh` inside it with a Trixie-patched CustoPiZer, and produce `workspace/output.img`.
+
+```
+# build from a branch/tag (defaults to main); install.sh is fetched from that ref
+./tools/build-local.sh my-branch
+
+# inspect the result offline (mounts the image, prints sanity checks, exits)
+./tools/check-image.sh workspace/output.img
+```
+
+Notes:
+
+- `build-local.sh` fetches `install.sh` from GitHub for the given ref, so push your branch before building from it.
+- It needs Docker with privileged containers; the build runs the armhf chroot under qemu and takes a while (emulated). The loop-mount + chroot work under OrbStack.
+- `check-image.sh` verifies the baked-in pieces (default `pi` user, SSH enabled, WiFi regdom in `cmdline.txt`, enabled services/timer, the hotspot keyfile, the ALSA mapping). `/etc/asound.conf` is intentionally absent until first boot.
+- To flash `output.img`, use Raspberry Pi Imager → "Use custom".
+
 ## Creating a release
 
 No golden Pi and no manual image backup. The release image is built reproducibly in CI by [`/.github/workflows/build-image.yml`](../.github/workflows/build-image.yml):
