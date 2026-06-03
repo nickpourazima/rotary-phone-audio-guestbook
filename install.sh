@@ -115,6 +115,14 @@ if [ "${AGB_BAKE_LOGIN:-0}" = "1" ]; then
         getent group "$grp" >/dev/null && usermod -aG "$grp" "${LOGIN_USER}" || true
     done
     log "Baked login: user '${LOGIN_USER}' with the configured default password"
+
+    # We provision the user ourselves, so disable Raspberry Pi OS's interactive
+    # first-boot user setup. Left enabled, it runs on tty1 and blocks a headless
+    # boot forever waiting for console input (multi-user.target never completes,
+    # so the guestbook services never start).
+    systemctl disable userconfig.service 2>/dev/null || true
+    systemctl mask userconfig.service 2>/dev/null || true
+    systemctl enable getty@tty1.service 2>/dev/null || true
 fi
 
 # 3b. Enable SSH so the image is reachable headlessly (via the hotspot if needed).
@@ -258,6 +266,8 @@ for svc in audioGuestBook audioGuestBookWebServer; do
     mkdir -p "${dropin}"
     cat > "${dropin}/10-agb.conf" <<EOF
 [Service]
+User=root
+Group=root
 WorkingDirectory=${INSTALL_DIR}
 Environment=GPIOZERO_PIN_FACTORY=lgpio
 EOF
@@ -269,6 +279,17 @@ cat > /etc/systemd/system/audioGuestBook.service.d/20-audio.conf <<EOF
 [Unit]
 After=agb-audio-detect.service
 Wants=agb-audio-detect.service
+EOF
+
+# The web server unit ships an absolute ExecStart to the old /home/admin path
+# and a start_server.sh that sources a venv and binds to a single IP. Override
+# it to run the system gunicorn bound to all interfaces (reachable on both the
+# home WiFi and the hotspot at 10.0.0.5).
+mkdir -p /etc/systemd/system/audioGuestBookWebServer.service.d
+cat > /etc/systemd/system/audioGuestBookWebServer.service.d/20-exec.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/gunicorn -w 1 -k gevent -b 0.0.0.0:8080 webserver.server:app
 EOF
 
 if systemd_running; then

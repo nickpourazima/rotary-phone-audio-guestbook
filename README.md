@@ -36,14 +36,13 @@ Inspired by my upcoming wedding, I created a DIY audio guestbook using a rotary 
 
 The image is based on **Raspberry Pi OS Lite (32-bit, Debian 13 "Trixie")** and is built automatically from this repository, so it stays reproducible and easy to audit.
 
-1. Download the [latest release](https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases).
-2. Extract the `.gz` file: `gunzip rpi_rotary_phone_audio_guestbook_v<latest>_trixie_imagebackup.img.gz`
-3. (Optional) Verify the download against the published `.sha256` file: `sha256sum -c <file>.gz.sha256`
-4. Flash the image to an SD card with Raspberry Pi Imager (choose **"Use custom"**) or BalenaEtcher.
+1. Download the [latest release](https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases) (the `.img.gz`).
+2. (Optional) Verify the download against the published `.sha256` file: `sha256sum -c <file>.gz.sha256`
+3. Flash the `.img.gz` to an SD card with Raspberry Pi Imager (choose **"Use custom"**) or BalenaEtcher. Both read the compressed image directly and decompress while writing, so there is no need to extract it first.
 
    > Note: the Imager's **OS customisation** (username, WiFi, SSH) is **disabled for custom images** — that is expected. This image already ships ready to use (see below), and you can optionally pre-configure it with a `custom.toml` file.
 
-5. Insert the SD card into your Raspberry Pi and power it on. Give it a minute on first boot.
+4. Insert the SD card into your Raspberry Pi and power it on. Give it a minute on first boot.
 
 The image boots ready to use:
 
@@ -107,7 +106,7 @@ Access Point IP Address for SSH: 10.0.0.5
 Web interface of your guestbook is http://10.0.0.5:8080
 ```
 
-**Important:** set your **WiFi country** in Raspberry Pi Imager's OS customisation before flashing. Without a regulatory domain the access point cannot start.
+**WiFi country:** the image ships with a default regulatory domain (`DE`) baked in, so the access point starts out of the box. To use a different region, either set `country` in a `custom.toml` before first boot, or run `sudo raspi-config nonint do_wifi_country <CC>` (e.g. `US`) and reboot.
 
 **Adding or changing a WiFi network later** — SSH into the Pi and run:
 
