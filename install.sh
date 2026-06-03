@@ -24,9 +24,15 @@ AP_PSK="${AP_PSK:-1234567890}"            # hotspot password (>= 8 chars)
 AP_CON="${AP_CON:-AGB-Hotspot}"           # NetworkManager connection id
 AP_IP="${AP_IP:-10.0.0.5}"                # hotspot gateway / SSH / web IP
 WIFI_DEV="${WIFI_DEV:-wlan0}"
-WIFI_COUNTRY="${WIFI_COUNTRY:-}"          # e.g. DE - REQUIRED for the AP to start
+WIFI_COUNTRY="${WIFI_COUNTRY:-DE}"        # baked default so the hotspot starts out of the box; override via custom.toml
 HOTSPOT_AUTORETURN="${HOTSPOT_AUTORETURN:-1}"  # 1 = periodically try to rejoin home WiFi
 HOTSPOT_INTERVAL="${HOTSPOT_INTERVAL:-5min}"   # how often to re-check (see caveat in README)
+
+# Default login baked into the release image so it is reachable without the
+# Raspberry Pi Imager's OS customisation (which is disabled for custom images).
+# Only created on a fresh image (no existing user); a live Pi keeps its user.
+DEFAULT_USER="${DEFAULT_USER:-admin}"
+DEFAULT_PASS="${DEFAULT_PASS:-password}"
 
 log()  { printf '\033[1;32m[install]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[install]\033[0m %s\n' "$*" >&2; }
@@ -90,19 +96,34 @@ apt-get install -y --no-install-recommends \
 # the new kernel GPIO interface). lgpio talks to /dev/gpiochip* directly.
 
 # ---------------------------------------------------------------------------
-# 3. WiFi regulatory domain (the AP will NOT come up without it)
+# 3. First-boot access + WiFi regulatory domain
 # ---------------------------------------------------------------------------
-if [ -n "${WIFI_COUNTRY}" ]; then
-    log "Setting WiFi country to ${WIFI_COUNTRY}"
-    if command -v raspi-config >/dev/null; then
-        raspi-config nonint do_wifi_country "${WIFI_COUNTRY}" || \
-            warn "raspi-config could not set the country."
-    fi
-    systemd_running && { rfkill unblock wifi || true; }
-else
-    warn "WIFI_COUNTRY is not set. The hotspot may refuse to start until you run:"
-    warn "    sudo raspi-config nonint do_wifi_country <CC>   (e.g. DE)"
+# 3a. Default user. The Imager's OS customisation is disabled for custom
+#     images, so a release image ships a default login. Only create it when no
+#     regular user exists yet (i.e. a fresh image) - a live Pi keeps its user.
+if ! getent passwd 1000 >/dev/null; then
+    log "Creating default user '${DEFAULT_USER}'"
+    useradd -m -s /bin/bash -u 1000 "${DEFAULT_USER}"
+    echo "${DEFAULT_USER}:${DEFAULT_PASS}" | chpasswd
+    for grp in sudo audio video plugdev gpio i2c spi netdev; do
+        getent group "$grp" >/dev/null && usermod -aG "$grp" "${DEFAULT_USER}" || true
+    done
 fi
+
+# 3b. Enable SSH so the image is reachable headlessly (via the hotspot if needed).
+if systemd_running; then
+    systemctl enable --now ssh 2>/dev/null || true
+else
+    systemctl enable ssh 2>/dev/null || true
+fi
+
+# 3c. WiFi country (the AP will NOT come up without a regulatory domain).
+log "Setting WiFi country to ${WIFI_COUNTRY}"
+if command -v raspi-config >/dev/null; then
+    raspi-config nonint do_wifi_country "${WIFI_COUNTRY}" || \
+        warn "raspi-config could not set the country."
+fi
+systemd_running && { rfkill unblock wifi || true; }
 
 # ---------------------------------------------------------------------------
 # 4. Audio: name-based, model-independent device selection
@@ -261,6 +282,7 @@ autoconnect=false
 mode=ap
 ssid=${AP_SSID}
 band=bg
+channel=1
 
 [wifi-security]
 key-mgmt=wpa-psk

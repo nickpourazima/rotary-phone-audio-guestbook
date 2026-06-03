@@ -28,6 +28,11 @@ and the release image is produced reproducibly in CI, so no hand-configured
   524" reports on Pi 4, where the USB card is card 3 rather than card 1).
 - `config.example.yaml` template; `config.yaml` is generated from it on first
   install with the install path substituted in.
+- Release image ships ready to use: a default user (`admin`/`password`), SSH
+  enabled, and a baked default WiFi country, since the Raspberry Pi Imager's OS
+  customisation is disabled for custom images. The hotspot is pinned to channel
+  1 for universal client compatibility. A `custom.toml` can pre-configure
+  login/WiFi before first boot.
 
 ### Changed
 

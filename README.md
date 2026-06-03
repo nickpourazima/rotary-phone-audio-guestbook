@@ -39,19 +39,46 @@ The image is based on **Raspberry Pi OS Lite (32-bit, Debian 13 "Trixie")** and 
 1. Download the [latest release](https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases).
 2. Extract the `.gz` file: `gunzip rpi_rotary_phone_audio_guestbook_v<latest>_trixie_imagebackup.img.gz`
 3. (Optional) Verify the download against the published `.sha256` file: `sha256sum -c <file>.gz.sha256`
-4. Flash the image to an SD card with Raspberry Pi Imager or BalenaEtcher:
+4. Flash the image to an SD card with Raspberry Pi Imager (choose **"Use custom"**) or BalenaEtcher.
 
-   [![](https://github.com/nickpourazima/rotary-phone-audio-guestbook/raw/main/images/rpi_imager_custom.png)](/nickpourazima/rotary-phone-audio-guestbook/blob/main/images/rpi_imager_custom.png)
+   > Note: the Imager's **OS customisation** (username, WiFi, SSH) is **disabled for custom images** — that is expected. This image already ships ready to use (see below), and you can optionally pre-configure it with a `custom.toml` file.
 
-5. In Raspberry Pi Imager, open **OS customisation** (the gear / "Edit settings" button) before writing and set:
-   - **Username and password** (Trixie no longer ships a default user)
-   - **WiFi SSID, password and — importantly — WiFi country** (the hotspot will not start without a regulatory domain)
-   - **Enable SSH** (recommended, especially if you want to add WiFi networks later)
-6. Insert the SD card into your Raspberry Pi and power it on.
+5. Insert the SD card into your Raspberry Pi and power it on. Give it a minute on first boot.
 
-   *If your customisations don't apply on first boot (a known issue with some Imager / OS combinations), try a different Raspberry Pi Imager version or configure the files in the boot partition manually.*
+The image boots ready to use:
 
-**If the Pi can't reach your WiFi, it will automatically open its own hotspot (see below). This can take a minute on first boot, so give it some time.**
+- **Default login:** username `admin`, password `password` (please change it — see below).
+- **SSH** is enabled.
+- **WiFi:** if you didn't pre-configure a network, the Pi opens its own hotspot so you can reach it (see [Hotspot](#hotspot-automatic-wifi-fallback)). Connect to `RPiHotspot`, then `ssh admin@10.0.0.5` and add your network with `sudo nmcli device wifi connect "<SSID>" password "<password>"`.
+
+**Change the default password** as soon as you log in: `passwd`.
+
+#### Optional: pre-configure WiFi/login before first boot
+
+Since Imager customisation is unavailable, you can drop a `custom.toml` file in the SD card's `bootfs` partition (Raspberry Pi OS applies it on first boot). On macOS/Linux, after flashing:
+
+```
+config_version = 1
+[system]
+hostname = "guestbook"
+[user]
+name = "admin"
+password = "your-password"
+password_encrypted = false
+[ssh]
+enabled = true
+password_authentication = true
+[wlan]
+ssid = "YourWiFi"
+password = "YourWiFiPassword"
+password_encrypted = false
+country = "DE"
+[locale]
+keymap = "de"
+timezone = "Europe/Berlin"
+```
+
+Save it as `custom.toml` (no `.txt` extension) in the boot partition, adjust the values, then boot. The WiFi password must be plain text (`password_encrypted = false`).
 
 ### Initial Configuration
 
@@ -71,7 +98,7 @@ Your audio guest book is now ready for test/deployment! For advanced configurati
 
 The guestbook uses **NetworkManager's built-in access-point mode** to provide a fallback hotspot. There is nothing to install and no interactive setup — it just works out of the box.
 
-How it works: on boot the Pi tries to join the WiFi network you configured in Raspberry Pi Imager. If that network is not in range, it automatically brings up its own access point so you can still reach the device.
+How it works: on boot the Pi tries to join the WiFi network you configured (via `custom.toml`, or later over SSH). If no known network is in range, it automatically brings up its own access point on channel 1 so you can still reach the device.
 
 ```
 WiFi SSID name is: RPiHotspot
@@ -102,7 +129,7 @@ The hotspot fallback requires **onboard WiFi**. Models without WiFi (the origina
 
 ## [Development](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/development.md)
 
-For contributors: the whole setup lives in a single [`install.sh`](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/install.sh). You can run it on a fresh Raspberry Pi OS Lite install, or let the [build workflow](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/.github/workflows/build-image.yml) produce a flashable release image from it. See the [Development docs](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/development.md) for details.
+For contributors: the whole setup lives in a single, idempotent [`install.sh`](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/install.sh). You can run it on a fresh Raspberry Pi OS Lite install, or let the [build workflow](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/.github/workflows/build-image.yml) produce a flashable release image from it. See the [Development docs](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/development.md) for details.
 
 ## Support
 
