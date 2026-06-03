@@ -139,12 +139,20 @@ aplay -l
 # Hotspot fallback
 journalctl -u agb-hotspot.service --no-pager
 nmcli connection show
+
+# Boot/service deadlocks and what's listening
+systemctl list-jobs                 # a stuck "running" job blocks everything behind it
+ss -tlnp | grep 8080                 # should show gunicorn on 0.0.0.0:8080
 ```
 
 ### Common issues and solutions
 
 - **Hook switch detection issues**: check `hook_type` and `invert_hook` in `config.yaml`.
 - **No audio / wrong sound card**: the boot detector should select the USB card automatically. Check `journalctl -u agb-audio-detect.service` and `/etc/asound.conf`. For a non-USB card (e.g. an I2S HAT), set an explicit `alsa_hw_mapping` (such as `plughw:CARD=<name>,DEV=0`) in `config.yaml`.
-- **Hotspot won't start**: ensure the WiFi country is set (`sudo raspi-config nonint do_wifi_country <CC>`) and the radio is unblocked (`rfkill list`). To keep the AP stable during an event, set `HOTSPOT_AUTORETURN=0` in `/etc/default/agb-hotspot`.
+- **A service won't start, `status=217/USER`**: the unit references a user that does not exist. The shipped `.service` files were written for an `admin` user, but the image's user is `pi` and the services run as `root` via the `…/*.service.d/10-agb.conf` drop-in. If you edit the units, keep `User=root` (or a user that exists).
+- **A service won't start, `status=203/EXEC`**: `ExecStart` points to a path that doesn't exist. The project lives in `/opt/rotary-phone-audio-guestbook`, but the shipped units hardcode the old `/home/admin/...` path. Drop-ins override `WorkingDirectory`, and the web server's `ExecStart` is replaced with the system `gunicorn`. Inspect the effective unit with `systemctl cat <unit>`.
+- **Headless boot hangs, services never start**: run `systemctl list-jobs`. If `userconfig.service` shows as `running`, Raspberry Pi OS's interactive first-boot user setup is blocking `multi-user.target` while waiting on the console. The image masks it (`sudo systemctl mask userconfig.service`); re-mask if it reappears.
+- **Web UI reachable on one network but not the other (home WiFi vs hotspot)**: the server must bind to all interfaces (`-b 0.0.0.0:8080`), not a single IP. Verify with `ss -tlnp | grep 8080`.
+- **Hotspot won't start**: the WiFi country is baked in (`DE`); for another region run `sudo raspi-config nonint do_wifi_country <CC>` and reboot, and check `rfkill list`. The hotspot stays up and stable while no home network is saved; once one is saved, set `HOTSPOT_AUTORETURN=0` in `/etc/default/agb-hotspot` to keep it from briefly dropping during an event.
 - **Race conditions during rapid hook toggling**: increase `hook_bounce_time` in `config.yaml`.
-- **No recordings saved**: check that `recordings_path` exists and is writable.
+- **No recordings saved**: check that `recordings_path` exists and is writable (it lives under the install directory and the services run as `root`).
