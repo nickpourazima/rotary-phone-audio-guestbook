@@ -28,11 +28,13 @@ and the release image is produced reproducibly in CI, so no hand-configured
   524" reports on Pi 4, where the USB card is card 3 rather than card 1).
 - `config.example.yaml` template; `config.yaml` is generated from it on first
   install with the install path substituted in.
-- Release image ships ready to use: a default user (`admin`/`password`), SSH
+- Release image ships ready to use: a default user (`pi`/`password`), SSH
   enabled, and a baked default WiFi country, since the Raspberry Pi Imager's OS
-  customisation is disabled for custom images. The hotspot is pinned to channel
-  1 for universal client compatibility. A `custom.toml` can pre-configure
-  login/WiFi before first boot.
+  customisation is disabled for custom images. Raspberry Pi OS's interactive
+  first-boot user setup (`userconfig.service`) is disabled so a headless boot
+  completes without waiting on the console. The hotspot uses WPA2 (AES) on
+  channel 1 for universal client compatibility. A `custom.toml` can
+  pre-configure WiFi/login before first boot.
 
 ### Changed
 
@@ -46,6 +48,18 @@ and the release image is produced reproducibly in CI, so no hand-configured
 - `config.yaml` default `alsa_hw_mapping` is now `default` (was `plughw:1,0`),
   and `config.yaml` is no longer tracked in git (it is runtime-mutable); use
   `config.example.yaml` as the template.
+- Project now installs under `/opt/rotary-phone-audio-guestbook` (was
+  `/home/admin/...`). The systemd services run as `root` and pick up the install
+  path and GPIO backend via drop-ins, because the original units hardcoded the
+  `admin` user and home path (which caused `217/USER` / `203/EXEC` failures).
+- Web server now runs the system `gunicorn` bound to `0.0.0.0:8080` (previously
+  a venv-based `start_server.sh` bound to the `wlan0` IP). It is therefore
+  reachable on both the home network and the hotspot at `10.0.0.5`, and no
+  longer depends on a virtualenv.
+- Hotspot stays up and stable when no home network is saved; auto-return is only
+  attempted once a home network exists. The NetworkManager dispatcher no longer
+  reacts to the hotspot's own up/down events (which previously caused the AP to
+  flap and drop connected clients).
 
 ### Removed
 
