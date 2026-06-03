@@ -80,11 +80,22 @@ jobs:
           EOF
           chmod 755 scripts/01-guestbook
 
-      - name: Run CustoPiZer
-        uses: OctoPrint/CustoPiZer@main
-        with:
-          workspace: ${{ github.workspace }}/workspace
-          scripts: ${{ github.workspace }}/scripts
+      - name: Run CustoPiZer (Trixie-patched)
+        run: |
+          set -euxo pipefail
+          # CustoPiZer's start_chroot_script installs policykit-1, removed in
+          # Debian Trixie (replaced by polkitd). Patch it before running.
+          cat > Dockerfile.custopizer <<'DOCKER'
+          FROM ghcr.io/octoprint/custopizer:latest
+          RUN set -e; for f in /CustoPiZer/start_chroot_script /common.sh; do \
+                [ -f "$f" ] && sed -i 's/policykit-1/polkitd/g' "$f" || true; \
+              done
+          DOCKER
+          docker build -t custopizer-trixie -f Dockerfile.custopizer .
+          docker run --rm --privileged --dns 8.8.8.8 \
+            -v "${{ github.workspace }}/workspace:/CustoPiZer/workspace" \
+            -v "${{ github.workspace }}/scripts:/CustoPiZer/workspace/scripts" \
+            custopizer-trixie
 
       - name: Compress image
         id: pack
