@@ -98,16 +98,23 @@ apt-get install -y --no-install-recommends \
 # ---------------------------------------------------------------------------
 # 3. First-boot access + WiFi regulatory domain
 # ---------------------------------------------------------------------------
-# 3a. Default user. The Imager's OS customisation is disabled for custom
-#     images, so a release image ships a default login. Only create it when no
-#     regular user exists yet (i.e. a fresh image) - a live Pi keeps its user.
-if ! getent passwd 1000 >/dev/null; then
-    log "Creating default user '${DEFAULT_USER}'"
-    useradd -m -s /bin/bash -u 1000 "${DEFAULT_USER}"
-    echo "${DEFAULT_USER}:${DEFAULT_PASS}" | chpasswd
+# 3a. Baked login. The Imager's OS customisation is disabled for custom images,
+#     so the release image ships a working login. Gated by AGB_BAKE_LOGIN=1
+#     (set only by the image build) so a manual live install never touches an
+#     existing user's password. Note: CustoPiZer's base already creates a 'pi'
+#     user, so we set the password on the existing UID-1000 user if present.
+if [ "${AGB_BAKE_LOGIN:-0}" = "1" ]; then
+    LOGIN_USER="$(getent passwd 1000 | cut -d: -f1)"
+    if [ -z "${LOGIN_USER}" ]; then
+        LOGIN_USER="${DEFAULT_USER}"
+        useradd -m -s /bin/bash -u 1000 "${LOGIN_USER}"
+    fi
+    echo "${LOGIN_USER}:${DEFAULT_PASS}" | chpasswd
+    passwd -u "${LOGIN_USER}" 2>/dev/null || true   # make sure it isn't locked
     for grp in sudo audio video plugdev gpio i2c spi netdev; do
-        getent group "$grp" >/dev/null && usermod -aG "$grp" "${DEFAULT_USER}" || true
+        getent group "$grp" >/dev/null && usermod -aG "$grp" "${LOGIN_USER}" || true
     done
+    log "Baked login: user '${LOGIN_USER}' with the configured default password"
 fi
 
 # 3b. Enable SSH so the image is reachable headlessly (via the hotspot if needed).
@@ -426,5 +433,4 @@ fi
 log "Done."
 log "Project:   ${INSTALL_DIR}"
 log "Audio:     USB card auto-detected at boot (ALSA default -> USB by name)"
-log "Hotspot:   SSID '${AP_SSID}'  ->  http://${AP_IP}:8080  (SSH: admin@${AP_IP})"
-[ -z "${WIFI_COUNTRY}" ] && warn "Remember to set the WiFi country before relying on the hotspot."
+log "Hotspot:   SSID '${AP_SSID}'  ->  http://${AP_IP}:8080  (SSH: $(getent passwd 1000 | cut -d: -f1)@${AP_IP})"

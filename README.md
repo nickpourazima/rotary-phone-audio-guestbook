@@ -47,9 +47,9 @@ The image is based on **Raspberry Pi OS Lite (32-bit, Debian 13 "Trixie")** and 
 
 The image boots ready to use:
 
-- **Default login:** username `admin`, password `password` (please change it — see below).
+- **Default login:** username `pi`, password `password` (please change it — see below).
 - **SSH** is enabled.
-- **WiFi:** if you didn't pre-configure a network, the Pi opens its own hotspot so you can reach it (see [Hotspot](#hotspot-automatic-wifi-fallback)). Connect to `RPiHotspot`, then `ssh admin@10.0.0.5` and add your network with `sudo nmcli device wifi connect "<SSID>" password "<password>"`.
+- **WiFi:** if you didn't pre-configure a network, the Pi opens its own hotspot so you can reach it (see [Hotspot](#hotspot-automatic-wifi-fallback)). Connect to `RPiHotspot`, then `ssh pi@10.0.0.5` and add your network with `sudo nmcli device wifi connect "<SSID>" password "<password>"`.
 
 **Change the default password** as soon as you log in: `passwd`.
 

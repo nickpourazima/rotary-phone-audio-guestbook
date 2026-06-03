@@ -69,6 +69,7 @@ jobs:
           # hotspot then uses the system regulatory domain. For a region-locked
           # image, add e.g.: export WIFI_COUNTRY=DE
           export REPO_REF="${{ steps.ref.outputs.value }}"
+          export AGB_BAKE_LOGIN=1
 
           curl -sSL "https://raw.githubusercontent.com/nickpourazima/rotary-phone-audio-guestbook/\${REPO_REF}/install.sh" \
             -o /tmp/install.sh
