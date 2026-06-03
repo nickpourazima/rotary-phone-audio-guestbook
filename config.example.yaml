@@ -1,37 +1,41 @@
-alsa_hw_mapping: plughw:1,0
-mixer_control_name: Speaker    # look at amixer scontrols for available controls
+# Template for config.yaml.
+#
+# config.yaml itself is NOT tracked in git (it is edited at runtime via the web
+# UI and by the installer). On first install, install.sh copies this file to
+# config.yaml and replaces __INSTALL_DIR__ with the actual install path.
+
+# "default" lets the boot-time detector route audio to the USB sound card by
+# NAME, so it works on any Pi model regardless of the card number. Advanced
+# users with a non-USB card (e.g. an I2S HAT) can set an explicit device here,
+# such as plughw:CARD=<name>,DEV=0.
+alsa_hw_mapping: default
+mixer_control_name: Speaker # look at amixer scontrols for available controls
 format: cd # look at aplay --help for available formats
 file_type: wav
 channels: 2
 hook_gpio: 22
 hook_type: NC # or 'NO' depending on your hardware configuration
-invert_hook: false  # Set to true if your hook behavior is reversed (recording starts when handset is down instead of up)
+invert_hook: false # Set to true if your hook behavior is reversed (recording starts when handset is down instead of up)
 # Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.
 hook_bounce_time: 0.1 # float or None
 recording_limit: 300
 sample_rate: 44100
-
 # Record greeting message button (Set to 0 to skip setup of this feature)
 record_greeting_gpio: 23
 record_greeting_type: NC # or 'NO' depending on your hardware configuration
 # Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.
 record_greeting_bounce_time: 0.1 # float or None
-
 # The beep sound is played when the user picks up the phone
-beep: /home/admin/rotary-phone-audio-guestbook/sounds/beep.wav
+beep: __INSTALL_DIR__/sounds/beep.wav
 beep_volume: 1.0
 beep_start_delay: 0.0
-
 # The greeting sound is played when the user picks up the phone
-greeting: /home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav
+greeting: __INSTALL_DIR__/sounds/greeting.wav
 greeting_volume: 1.0
 greeting_start_delay: 1.5
-
 # The time_exceeded sound is played when the user has been recording for too long
-time_exceeded: /home/admin/rotary-phone-audio-guestbook/sounds/time_exceeded.wav
+time_exceeded: __INSTALL_DIR__/sounds/time_exceeded.wav
 time_exceeded_volume: 1.0
-
-recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
-
+recordings_path: __INSTALL_DIR__/recordings
 shutdown_gpio: 0 #Set GPIO pin here --> Note: Pin is active LOW, pull Pin to GND to activate shutdown
 shutdown_button_hold_time: 2 # default 2 seconds

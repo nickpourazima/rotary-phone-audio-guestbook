@@ -1,0 +1,131 @@
+name: Build release image
+
+# Builds a ready-to-flash Raspberry Pi OS image with the guestbook
+# pre-installed, by running install.sh inside the image (chroot).
+# No physical Pi and no hand-configured "golden" SD card required.
+#
+# Base: Raspberry Pi OS Lite, 32-bit (armhf), Debian 13 "Trixie".
+# armhf is deliberate: it boots on every Pi from the original Pi 1 / Zero
+# (armv6) up to the Pi 5. A 64-bit (arm64) image would NOT boot on Pi Zero.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build from"
+        required: false
+        default: "main"
+
+env:
+  # Pinned base image (verified bootable). Bump deliberately, not automatically:
+  # a future image may drop armv6 and silently break the original Pi Zero.
+  BASE_IMG_URL: "https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2025-12-04/2025-12-04-raspios-trixie-armhf-lite.img.xz"
+  BASE_IMG_SHA256: "1b3e49b67b15050a9f20a60267c145e6d468dc9559dd9cd945130a11401a49ff"
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to attach the image to a release
+    steps:
+      - name: Determine ref
+        id: ref
+        run: echo "value=${{ github.event.inputs.ref || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      # Register qemu so the armhf image can be chrooted on an x86 runner.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Prepare workspace
+        run: |
+          set -euxo pipefail
+          mkdir -p workspace scripts
+
+          curl -L -o base.img.xz "${BASE_IMG_URL}"
+          echo "${BASE_IMG_SHA256}  base.img.xz" | sha256sum -c -
+
+          xz -d -T0 base.img.xz
+          mv base.img workspace/input.img
+
+          # Give the build room for apt installs; CustoPiZer grows the
+          # filesystem to fill on entry and shrinks it again on exit.
+          # If apt runs out of space, increase this value.
+          truncate -s +2G workspace/input.img
+
+      - name: Write build script
+        run: |
+          cat > scripts/01-guestbook <<EOF
+          #!/usr/bin/env bash
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq git curl
+
+          # WIFI_COUNTRY is intentionally NOT baked in: the country the user
+          # picks in Raspberry Pi Imager is applied on first boot and the
+          # hotspot then uses the system regulatory domain. For a region-locked
+          # image, add e.g.: export WIFI_COUNTRY=DE
+          export REPO_REF="${{ steps.ref.outputs.value }}"
+          export AGB_BAKE_LOGIN=1
+
+          curl -sSL "https://raw.githubusercontent.com/nickpourazima/rotary-phone-audio-guestbook/\${REPO_REF}/install.sh" \
+            -o /tmp/install.sh
+          bash /tmp/install.sh
+
+          # Tidy up so the released image is clean and small.
+          apt-get clean
+          rm -rf /var/lib/apt/lists/* /tmp/install.sh
+          EOF
+          chmod 755 scripts/01-guestbook
+
+      - name: Run CustoPiZer (Trixie-patched)
+        run: |
+          set -euxo pipefail
+          # CustoPiZer's start_chroot_script installs policykit-1, removed in
+          # Debian Trixie (replaced by polkitd). Patch it before running.
+          cat > Dockerfile.custopizer <<'DOCKER'
+          FROM ghcr.io/octoprint/custopizer:latest
+          RUN set -e; for f in /CustoPiZer/start_chroot_script /common.sh; do \
+                [ -f "$f" ] && sed -i 's/policykit-1/polkitd/g' "$f" || true; \
+              done
+          DOCKER
+          docker build -t custopizer-trixie -f Dockerfile.custopizer .
+          docker run --rm --privileged --dns 8.8.8.8 \
+            -v "${{ github.workspace }}/workspace:/CustoPiZer/workspace" \
+            -v "${{ github.workspace }}/scripts:/CustoPiZer/workspace/scripts" \
+            custopizer-trixie
+
+      - name: Compress image
+        id: pack
+        run: |
+          set -euxo pipefail
+          REF="${{ steps.ref.outputs.value }}"
+          OUT="rpi_rotary_phone_audio_guestbook_${REF}_trixie_imagebackup.img"
+          # CustoPiZer writes the customized image as output.img (older
+          # versions modified input.img in place) - handle both.
+          IMG="workspace/output.img"; [ -f "${IMG}" ] || IMG="workspace/input.img"
+          mv "${IMG}" "${OUT}"
+          sudo apt-get update -qq && sudo apt-get install -y -qq pigz
+          pigz -9 "${OUT}"
+          echo "file=${OUT}.gz" >> "$GITHUB_OUTPUT"
+          sha256sum "${OUT}.gz" | tee "${OUT}.gz.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: guestbook-image
+          retention-days: 7
+          path: |
+            ${{ steps.pack.outputs.file }}
+            ${{ steps.pack.outputs.file }}.sha256
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.pack.outputs.file }}
+            ${{ steps.pack.outputs.file }}.sha256
