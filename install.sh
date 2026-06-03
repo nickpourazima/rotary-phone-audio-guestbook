@@ -305,6 +305,9 @@ channel=1
 
 [wifi-security]
 key-mgmt=wpa-psk
+proto=rsn
+pairwise=ccmp
+group=ccmp
 psk=${AP_PSK}
 
 [ipv4]
@@ -346,52 +349,61 @@ client_connected() {
         | awk -F: -v dev="$WIFI_DEV" -v ap="$AP_CON" \
             '$2 ~ /wireless/ && $3==dev && $1!=ap {f=1} END{exit f?0:1}'
 }
-known_ssid_in_range() {
-    local profiles inrange p ssid s
-    mapfile -t profiles < <(
-        nmcli -t -f NAME,TYPE connection show 2>/dev/null \
-        | awk -F: -v ap="$AP_CON" '$2 ~ /wireless/ && $1!=ap {print $1}')
-    [ "${#profiles[@]}" -eq 0 ] && return 1
-    nmcli device wifi rescan ifname "$WIFI_DEV" >/dev/null 2>&1 || true
-    sleep 3
-    mapfile -t inrange < <(
-        nmcli -t -f SSID device wifi list ifname "$WIFI_DEV" --rescan no 2>/dev/null \
-        | sed '/^$/d' | sort -u)
-    for p in "${profiles[@]}"; do
-        ssid="$(nmcli -t -g 802-11-wireless.ssid connection show "$p" 2>/dev/null)"
-        [ -z "$ssid" ] && ssid="$p"
-        for s in "${inrange[@]}"; do
-            [ "$s" = "$ssid" ] && return 0
-        done
-    done
-    return 1
+client_profiles() {
+    nmcli -t -f NAME,TYPE connection show 2>/dev/null \
+        | awk -F: -v ap="$AP_CON" '$2 ~ /wireless/ && $1!=ap {print $1}'
 }
 start_ap() { ap_active || nmcli connection up "$AP_CON" >/dev/null 2>&1 || true; }
 stop_ap()  { ap_active && nmcli connection down "$AP_CON" >/dev/null 2>&1 || true; }
 
+# Connected to a real network -> make sure the AP is off.
 if client_connected; then
     stop_ap
     exit 0
 fi
-if ap_active && [ "$HOTSPOT_AUTORETURN" != "1" ]; then
+
+# Not connected as a client. If there are NO saved home networks there is
+# nothing to return to: keep the hotspot UP and STABLE (never drop it to scan,
+# which would otherwise kick connected clients off every cycle).
+mapfile -t profiles < <(client_profiles)
+if [ "${#profiles[@]}" -eq 0 ]; then
+    start_ap
     exit 0
 fi
-stop_ap
-if known_ssid_in_range; then
-    nmcli device connect "$WIFI_DEV" >/dev/null 2>&1 || true
-    sleep 8
-    client_connected && exit 0
+
+# Saved networks exist but we're not connected. If auto-return is disabled and
+# the AP is already up, leave it alone (no interruption during an event).
+if [ "$HOTSPOT_AUTORETURN" != "1" ] && ap_active; then
+    exit 0
 fi
+
+# Try to (re)join a saved network; fall back to the AP if none is reachable.
+stop_ap
+nmcli device wifi rescan ifname "$WIFI_DEV" >/dev/null 2>&1 || true
+sleep 3
+for p in "${profiles[@]}"; do
+    if nmcli connection up "$p" >/dev/null 2>&1; then
+        sleep 5
+        client_connected && exit 0
+    fi
+done
 start_ap
 AGB_EOF
 chmod 755 /usr/local/sbin/agb-hotspot.sh
 
-# 6d. React immediately to NetworkManager events.
+# 6d. React to NetworkManager events. We deliberately ignore the hotspot's own
+#     up/down (which we trigger ourselves) to avoid a flap loop, and only react
+#     to a client connection dropping or connectivity changing.
 install -d /etc/NetworkManager/dispatcher.d
 cat > /etc/NetworkManager/dispatcher.d/90-agb-hotspot <<'DISP_EOF'
 #!/usr/bin/env bash
+# $1=interface  $2=action  $CONNECTION_ID=activating/deactivating connection
+[ -r /etc/default/agb-hotspot ] && . /etc/default/agb-hotspot
+AP_CON="${AP_CON:-AGB-Hotspot}"
+# Ignore events caused by the hotspot connection itself.
+[ "${CONNECTION_ID:-}" = "${AP_CON}" ] && exit 0
 case "$2" in
-    up|down|connectivity-change|dhcp4-change)
+    down|connectivity-change)
         /usr/local/sbin/agb-hotspot.sh >/dev/null 2>&1 &
         ;;
 esac

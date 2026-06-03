@@ -117,7 +117,7 @@ sudo nmcli device wifi connect "<SSID>" password "<PASSWORD>"
 
 NetworkManager saves the network and prefers it over the hotspot on the next check.
 
-**Single-radio note:** the Pi has one WiFi radio, so it is either connected to your WiFi *or* running the hotspot, never both. By default it re-checks every few minutes and returns to your WiFi automatically once it is back in range; while in hotspot mode this causes a brief interruption every few minutes. To keep the hotspot perfectly stable for the duration of an event, set `HOTSPOT_AUTORETURN=0` in `/etc/default/agb-hotspot` and reboot.
+**Single-radio note:** the Pi has one WiFi radio, so it is either connected to your WiFi *or* running the hotspot, never both. If **no** home network is saved, the hotspot stays up permanently and stable. Once you *have* saved a home network, the Pi re-checks every few minutes and returns to it automatically when it is back in range; while in hotspot mode that auto-return causes a brief interruption every few minutes. To keep the hotspot perfectly stable even with a saved network (e.g. for the duration of an event), set `HOTSPOT_AUTORETURN=0` in `/etc/default/agb-hotspot` and reboot. The hotspot uses WPA2 (AES) on channel 1.
 
 ## Supported Raspberry Pi models
 
