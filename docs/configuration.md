@@ -117,7 +117,7 @@ To record a custom greeting:
 
 1. Connect a microphone to your Raspberry Pi
 2. If you've configured a record_greeting button, press and hold it to record your message
-3. Alternatively, you can record on another device and copy the WAV file to `/home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav`
+3. Alternatively, you can record on another device and copy the WAV file to `/opt/rotary-phone-audio-guestbook/sounds/greeting.wav`
 
 ### Beep Sound
 
@@ -171,14 +171,14 @@ If the service fails to start:
 2. Verify config.yaml is correctly formatted:
 
    ```bash
-   cd /home/admin/rotary-phone-audio-guestbook
+   cd /opt/rotary-phone-audio-guestbook
    python3 -c "import yaml; yaml.safe_load(open('config.yaml'))"
    ```
 
 3. Check permissions on audio devices:
    ```bash
    ls -la /dev/snd/
-   sudo usermod -a -G audio admin
+   sudo usermod -a -G audio pi
    ```
 
 ## Complete Config.yaml Example
@@ -204,21 +204,21 @@ record_greeting_type: NC # or 'NO' depending on your hardware configuration
 record_greeting_bounce_time: 0.1 # float or None
 
 # The beep sound is played when the user picks up the phone
-beep: /home/admin/rotary-phone-audio-guestbook/sounds/beep.wav
+beep: /opt/rotary-phone-audio-guestbook/sounds/beep.wav
 beep_volume: 1.0
 beep_start_delay: 0.0
 beep_include_in_message: true
 
 # The greeting sound is played when the user picks up the phone
-greeting: /home/admin/rotary-phone-audio-guestbook/sounds/greeting.wav
+greeting: /opt/rotary-phone-audio-guestbook/sounds/greeting.wav
 greeting_volume: 1.0
 greeting_start_delay: 1.5
 
 # The time_exceeded sound is played when the user has been recording for too long
-time_exceeded: /home/admin/rotary-phone-audio-guestbook/sounds/time_exceeded.wav
+time_exceeded: /opt/rotary-phone-audio-guestbook/sounds/time_exceeded.wav
 time_exceeded_volume: 1.0
 
-recordings_path: /home/admin/rotary-phone-audio-guestbook/recordings
+recordings_path: /opt/rotary-phone-audio-guestbook/recordings
 time_exceeded_length: 300
 
 shutdown_gpio: 0 #Set GPIO pin here --> Note: Pin is active LOW, pull Pin to GND to activate shutdown
@@ -276,10 +276,10 @@ To backup your recordings:
 2. Or, use `scp` to copy recordings to another computer:
 
    ```bash
-   scp -r admin@your_raspberry_pi_ip:/home/admin/rotary-phone-audio-guestbook/recordings /path/to/backup
+   scp -r pi@your_raspberry_pi_ip:/opt/rotary-phone-audio-guestbook/recordings /path/to/backup
    ```
 
 3. Backup your custom configuration:
    ```bash
-   scp admin@your_raspberry_pi_ip:/home/admin/rotary-phone-audio-guestbook/config.yaml /path/to/backup
+   scp pi@your_raspberry_pi_ip:/opt/rotary-phone-audio-guestbook/config.yaml /path/to/backup
    ```

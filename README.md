@@ -13,7 +13,6 @@ This project transforms a rotary phone into a voice recorder for special events 
     - [Initial Configuration](#initial-configuration)
   - [Hotspot (automatic WiFi fallback)](#hotspot-automatic-wifi-fallback)
   - [Supported Raspberry Pi models](#supported-raspberry-pi-models)
-  - [Software](#software)
   - [Development](#development)
   - [Support](#support)
   - [Star History](#star-history)
@@ -96,8 +95,6 @@ NetworkManager saves the network and prefers it over the hotspot on the next che
 Because the image is 32-bit (armhf), it runs on **every** Raspberry Pi model — from the original Pi 1 and Pi Zero through Zero 2 W, Pi 2/3/4/400 and Pi 5/500. GPIO uses the `lgpio` backend, so it also works on the Pi 5.
 
 The hotspot fallback requires **onboard WiFi**. Models without WiFi (the original Pi Zero without "W", Pi 1, Pi 2) can still run the guestbook, but cannot open a hotspot. For a new build, the **Pi Zero 2 W** is the recommended choice: pin-compatible with the original Zero, much faster, and not affected by the eventual end of armv6 support.
-
-## [Software](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/software.md)
 
 ## [Development](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/development.md)
 
