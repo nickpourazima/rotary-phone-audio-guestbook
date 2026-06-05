@@ -43,9 +43,12 @@ app = Flask(__name__,
            static_folder=str(STATIC_DIR))
 app.secret_key = "supersecretkey"  # Needed for flashing messages
 
-# Define other important paths
-config_path = BASE_DIR / "config.yaml"
-upload_folder = BASE_DIR / "uploads"
+# Define other important paths. The AGB_CONFIG_PATH / AGB_UPLOAD_FOLDER env
+# overrides let an off-device harness (test/test_server.py) point the app at an
+# isolated config and uploads dir. The device never sets these, so its behavior
+# is unchanged.
+config_path = Path(os.environ.get("AGB_CONFIG_PATH", str(BASE_DIR / "config.yaml")))
+upload_folder = Path(os.environ.get("AGB_UPLOAD_FOLDER", str(BASE_DIR / "uploads")))
 upload_folder.mkdir(parents=True, exist_ok=True)
 
 logger.info(f"Config path: {config_path}")
