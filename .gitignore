@@ -11,6 +11,7 @@ node_modules
 *.gz
 *.egg-info/
 test/**/*.wav
+test/test_config.yaml
 .DS_Store
 config.yaml
 .claude
