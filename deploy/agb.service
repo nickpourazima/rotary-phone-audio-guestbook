@@ -1,0 +1,20 @@
+[Unit]
+Description=Rotary Phone Audio Guestbook
+# Needs the USB card routed to "default" (agb-audio-detect writes /etc/asound.conf)
+# and the network up for the web UI on :8080.
+After=network.target sound.target agb-audio-detect.service
+Wants=agb-audio-detect.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/rotary-phone-audio-guestbook
+# Single static binary. Serves the web UI AND runs the GPIO/audio poller in one
+# process (two goroutines sharing config). No gunicorn, no venv, no pin-factory
+# env var, no drop-ins. Config path defaults to <workdir>/config.yaml.
+ExecStart=/opt/rotary-phone-audio-guestbook/agb
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
