@@ -13,3 +13,5 @@ node_modules
 test/**/*.wav
 .DS_Store
 config.yaml
+.claude
+CLAUDE.md

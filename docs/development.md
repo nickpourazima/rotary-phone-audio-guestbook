@@ -1,238 +1,158 @@
 # Development Setup
 
-For contributors interested in working on the project and testing new features before cutting a release, here's a brief guide.
+For contributors working on the project and testing new features before cutting a release.
+
+There are two layers: a **local development environment** on your own machine (editor support, linting, running the web server off-device) and **provisioning/testing on a Pi**. Note that on the Pi itself, everything is installed via `apt` by `install.sh` — the `uv`/venv flow below is only for local development convenience.
 
 ## Prerequisites
 
-- Python 3.9.2 or higher
-- Raspberry Pi OS with necessary system dependencies
+- Python 3.11+ (Raspberry Pi OS Trixie ships 3.11)
+- For on-device testing: a Raspberry Pi running Raspberry Pi OS Lite (Trixie)
+- Node.js and npm (only for rebuilding the Tailwind CSS)
 
-### System Dependencies
+## Local development environment (optional)
 
-Install these system-level packages required for building Python extensions:
+This project uses [uv](https://github.com/astral-sh/uv) by @astral-sh for a fast local virtual environment.
 
-```bash
-# Required system packages for development
-sudo apt-get update
-sudo apt-get install libffi-dev
 ```
-
-The libffi-dev package provides necessary header files for compiling Python packages with C extensions, including gevent which improves web server performance.
-
-### Node.js and npm
-
-Install Node.js and npm for frontend development:
-
-```bash
-sudo apt-get install npm
-```
-
-## Python Dependencies Management
-
-This project uses [uv](https://github.com/astral-sh/uv) by @astral-sh as the package manager. It's extremely fast and more robust compared to pip.
-
-### Setting Up a Development Environment
-
-```bash
 # Install uv if you don't have it
 pip install uv
 
 # Create and activate a virtual environment
 uv venv
-# On Linux/Mac
-source .venv/bin/activate
-# On Windows (Command Prompt)
-.venv\Scripts\activate
-# On Windows (PowerShell)
-.\.venv\Scripts\Activate.ps1
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 
-# Install dependencies from pyproject.toml
-uv pip install -e .
-
-# Or install from requirements.txt
-uv pip install -r requirements.txt
+# Install dependencies
+uv pip install -e .                  # or: uv pip install -r requirements.txt
 ```
 
-If you modify dependencies in pyproject.toml, update requirements.txt with:
+If you change dependencies in `pyproject.toml`, regenerate `requirements.txt`:
 
-```bash
+```
 uv pip compile pyproject.toml -o requirements.txt
 ```
 
-Alternatively, to directly run the main audioGuestBook script:
+`libffi-dev` is only needed if you compile `gevent` from source inside a venv; the device install uses the prebuilt `python3-gevent` apt package instead.
 
-```bash
-# Directly run audioGuestBook
-uv run src/audioGuestBook.py
+## Frontend development with Tailwind CSS
+
 ```
-
-### Installing Gevent
-
-For better web server performance, install gevent:
-
-```bash
-uv pip install gevent
-```
-
-## Frontend Development with Tailwind CSS
-
-Tailwind CSS is used for styling the web interface. To set up the frontend build process:
-
-```bash
 # Install required npm packages
 npm install -D tailwindcss postcss autoprefixer cssnano
-```
 
-### Building and Optimizing CSS
-
-For development, build the CSS files:
-
-```bash
-# Build Tailwind CSS
+# Build
 cd webserver
 npx tailwindcss -i static/css/tailwind.css -o static/css/output.css
-```
 
-For production, optimize and minify the CSS:
-
-```bash
-# Generate optimized CSS by removing unused styles
-cd webserver
-npx tailwindcss -i static/css/tailwind.css -o static/css/output.css
-# Further minify CSS to reduce file size
+# Minify for production
 npx postcss static/css/output.css -o static/css/output.min.css
 ```
 
-## Streaming Audio Support
+**Commit the built `output.min.css`.** The device installer does not install Node/npm, so the compiled CSS must be present in the repo.
 
-The project uses gevent workers for the Gunicorn server to enable proper streaming of audio files. This prevents the server from timing out when playing longer recordings. The `start_server.sh` script is configured to use gevent workers with:
+## Streaming audio support
 
-```bash
+The web server uses gevent workers under Gunicorn so that streaming longer recordings doesn't time out. `start_server.sh` runs:
+
+```
 exec gunicorn -w 1 -k gevent -b ${IP_ADDRESS}:8080 webserver.server:app
 ```
 
-## Development Workflow
+## Provisioning a Pi for testing
 
-The typical development workflow involves:
+The entire device setup lives in a single, idempotent [`install.sh`](../install.sh) — there is no hand-configured "golden" image. On a fresh Raspberry Pi OS Lite (Trixie):
 
-1. Making changes on your local development machine
-2. Syncing those changes to the Raspberry Pi
-3. Testing the changes on the Raspberry Pi
-4. Creating backups/releases when satisfied
+1. Flash the OS, and in Raspberry Pi Imager's OS customisation set username/password, WiFi (with **WiFi country**), and enable SSH.
+2. SSH in and run the installer:
 
-### Syncing Files with Raspberry Pi
-
-To upload changes from your local dev machine to the Raspberry Pi (Pi Zero or similar), you can use the following rsync command:
-
-```bash
-# Sync files with Pi
-rsync -av --exclude-from='./rsync-exclude.txt' ./ admin@192.168.x.x:/home/admin/rotary-phone-audio-guestbook
-# Replace 192.168.x.x with the actual IP address of your Raspberry Pi.
+```
+curl -sSL https://raw.githubusercontent.com/nickpourazima/rotary-phone-audio-guestbook/main/install.sh | sudo bash
 ```
 
-### Starting the Web Server in Development Mode
+Or, from a checkout, passing the WiFi country so the hotspot can start:
 
-For testing the Flask-based web server on the Raspberry Pi:
-
-```bash
-# Start webserver on Raspberry Pi
-flask --app webserver/server.py run -h 192.168.x.x -p 8080
+```
+WIFI_COUNTRY=DE sudo -E ./install.sh
 ```
 
-## Deploying and Creating Releases
+`install.sh` installs the apt dependencies, configures GPIO (`lgpio` backend), boot-time USB audio auto-detection, the NetworkManager hotspot fallback, and the systemd services. It is safe to re-run.
 
-### Using the Deploy Script
+## Iterating on code on the device
 
-The included `deploy.sh` script automates the deployment process. It:
+The project is installed under `/opt/rotary-phone-audio-guestbook` (owned by root). To push your working copy and restart the services:
 
-1. Syncs files from your local machine to the Raspberry Pi
-2. Installs and configures service files on the Raspberry Pi
-3. Creates a backup image of the Raspberry Pi's SD card (using incremental backup when possible)
-4. Copies the backup image back to your local machine's backup directory
-
-To use it:
-
-```bash
-# Edit the variables at the top of deploy.sh to match your environment
-./deploy.sh
+```
+rsync -av --exclude-from='./rsync-exclude.txt' ./ root@<pi>:/opt/rotary-phone-audio-guestbook/
+ssh root@<pi> 'systemctl restart audioGuestBook.service audioGuestBookWebServer.service'
 ```
 
-Make sure to configure these variables in the script:
+`config.yaml` is not tracked in git and lives only on the device, so rsync won't overwrite the device's configuration.
 
-- `RPI_USER`: Username on the Raspberry Pi (usually "admin")
-- `RPI_IP`: IP address of your Raspberry Pi
-- `IMG_VERSION`: Version number for the backup image
+For quick web-UI iteration you can also run the server directly:
 
-#### Setting Up SSH Key Authentication (Optional)
-
-To avoid having to enter your password multiple times during deployment, you can set up SSH key authentication:
-
-```bash
-# Generate an SSH key if you don't have one
-ssh-keygen -t rsa -b 4096
-
-# Copy your public key to the Raspberry Pi
-ssh-copy-id admin@192.168.x.x
+```
+flask --app webserver/server.py run -h 0.0.0.0 -p 8080
 ```
 
-After setting up SSH keys, the deploy script will run without password prompts.
+## Building and testing the image locally
 
-### Generating an Image for a Release Manually
+Two helper scripts under [`tools/`](../tools) let you build and inspect the release image on your own machine (macOS with OrbStack/Docker, or Linux) without waiting for CI. They mirror the CI workflow: download the pinned Trixie base image, run `install.sh` inside it with a Trixie-patched CustoPiZer, and produce `workspace/output.img`.
 
-The deploy script uses [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils) (thank you to @scruss & @seamusdemora) to create backup images.
+```
+# build from a branch/tag (defaults to main); install.sh is fetched from that ref
+./tools/build-local.sh my-branch
 
-To install it on your Raspberry Pi:
-
-```bash
-# Clone the repository
-git clone https://github.com/seamusdemora/RonR-RPi-image-utils.git
-
-# Install the script
-cd RonR-RPi-image-utils
-sudo ./install.sh
+# inspect the result offline (mounts the image, prints sanity checks, exits)
+./tools/check-image.sh workspace/output.img
 ```
 
-Alternatively, a manual run would look something like this:
+Notes:
 
-```bash
-# Create a full image backup
-sudo image-backup -i /mnt/rpizero_rotary_phone_audio_guestbook_v<version_number>_imagebackup.img
+- `build-local.sh` fetches `install.sh` from GitHub for the given ref, so push your branch before building from it.
+- It needs Docker with privileged containers; the build runs the armhf chroot under qemu and takes a while (emulated). The loop-mount + chroot work under OrbStack.
+- `check-image.sh` verifies the baked-in pieces (default `pi` user, SSH enabled, WiFi regdom in `cmdline.txt`, enabled services/timer, the hotspot keyfile, the ALSA mapping). `/etc/asound.conf` is intentionally absent until first boot.
+- To flash `output.img`, use Raspberry Pi Imager → "Use custom".
 
-# Check the integrity
-md5sum /mnt/rpizero_rotary_phone_audio_guestbook_v<version_number>_imagebackup.img
-```
+## Creating a release
 
-**Note**: For incremental backups (much faster) point to the existing img file:
+No golden Pi and no manual image backup. The release image is built reproducibly in CI by [`/.github/workflows/build-image.yml`](../.github/workflows/build-image.yml):
 
-```bash
-sudo image-backup /mnt/rpizero_rotary_phone_audio_guestbook_v<prior_version_number>_imagebackup.img
-```
+- It downloads the pinned Raspberry Pi OS Lite (Trixie, armhf) base image, runs `install.sh` inside it with CustoPiZer, then compresses and attaches the `.img.gz` (plus a `.sha256`) to the release.
+- **Cut a release:** `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag triggers the build and attaches the image to the release.
+- **Test the build without releasing:** Actions → "Build release image" → Run workflow (ref `main`), then download the artifact.
 
-### Backup Strategy
-
-The deploy script automatically handles finding the best backup strategy:
-
-1. It first checks if the current version backup already exists (for updates to the same version)
-2. If not, it tries to find previous versions to use as a base for incremental backup
-3. If no previous versions are found, it falls back to a full backup
-
-This approach minimizes backup time when working with iterative releases.
+> The previous `deploy.sh` + [RonR-RPi-image-utils](https://github.com/seamusdemora/RonR-RPi-image-utils) flow is no longer used; you no longer dump a manually configured SD card to produce a release.
 
 ## Debugging
 
-To help with debugging the `audioGuestBook` service and the webserver, use these commands:
+```
+# Guestbook and web server logs (use -n N --no-pager for a snapshot;
+# -f follows live and is exited with Ctrl+C — it is not a freeze)
+journalctl -u audioGuestBook.service -n 50 --no-pager
+journalctl -u audioGuestBookWebServer.service -n 50 --no-pager
 
-```bash
-# Monitor the audioGuestBook service logs
-journalctl -fu audioGuestBook.service
-# OR
-journalctl -fu audioGuestBookWebServer.service
+# Audio: what card was detected and how the default is routed
+journalctl -u agb-audio-detect.service --no-pager
+cat /etc/asound.conf
+aplay -l
+
+# Hotspot fallback
+journalctl -u agb-hotspot.service --no-pager
+nmcli connection show
+
+# Boot/service deadlocks and what's listening
+systemctl list-jobs                 # a stuck "running" job blocks everything behind it
+ss -tlnp | grep 8080                 # should show gunicorn on 0.0.0.0:8080
 ```
 
-### Common Issues and Solutions
+### Common issues and solutions
 
-- **Hook switch detection issues**: Check the `hook_type` and `invert_hook` settings in `config.yaml`
-- **Audio not working**: Verify ALSA configuration with `aplay -l` and `amixer scontrols`
-- **Race conditions during rapid hook toggling**: Increase `hook_bounce_time` in `config.yaml`
-- **No recordings saved**: Check file permissions and make sure `recordings_path` directory exists
-- **Deploy script asking for password multiple times**: Set up SSH key authentication as described above
+- **Hook switch detection issues**: check `hook_type` and `invert_hook` in `config.yaml`.
+- **No audio / wrong sound card**: the boot detector should select the USB card automatically. Check `journalctl -u agb-audio-detect.service` and `/etc/asound.conf`. For a non-USB card (e.g. an I2S HAT), set an explicit `alsa_hw_mapping` (such as `plughw:CARD=<name>,DEV=0`) in `config.yaml`.
+- **A service won't start, `status=217/USER`**: the unit references a user that does not exist. The shipped `.service` files were written for an `admin` user, but the image's user is `pi` and the services run as `root` via the `…/*.service.d/10-agb.conf` drop-in. If you edit the units, keep `User=root` (or a user that exists).
+- **A service won't start, `status=203/EXEC`**: `ExecStart` points to a path that doesn't exist. The project lives in `/opt/rotary-phone-audio-guestbook`, but the shipped units hardcode the old `/home/admin/...` path. Drop-ins override `WorkingDirectory`, and the web server's `ExecStart` is replaced with the system `gunicorn`. Inspect the effective unit with `systemctl cat <unit>`.
+- **Headless boot hangs, services never start**: run `systemctl list-jobs`. If `userconfig.service` shows as `running`, Raspberry Pi OS's interactive first-boot user setup is blocking `multi-user.target` while waiting on the console. The image masks it (`sudo systemctl mask userconfig.service`); re-mask if it reappears.
+- **Web UI reachable on one network but not the other (home WiFi vs hotspot)**: the server must bind to all interfaces (`-b 0.0.0.0:8080`), not a single IP. Verify with `ss -tlnp | grep 8080`.
+- **Hotspot won't start**: the WiFi country is baked in (`DE`); for another region run `sudo raspi-config nonint do_wifi_country <CC>` and reboot, and check `rfkill list`. The hotspot stays up and stable while no home network is saved; once one is saved, set `HOTSPOT_AUTORETURN=0` in `/etc/default/agb-hotspot` to keep it from briefly dropping during an event.
+- **Race conditions during rapid hook toggling**: increase `hook_bounce_time` in `config.yaml`.
+- **No recordings saved**: check that `recordings_path` exists and is writable (it lives under the install directory and the services run as `root`).
