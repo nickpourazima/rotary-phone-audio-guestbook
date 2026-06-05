@@ -18,17 +18,31 @@ This project uses [uv](https://github.com/astral-sh/uv) by @astral-sh for a fast
 # Install uv if you don't have it
 pip install uv
 
-# Create and activate a virtual environment
-uv venv
+# Create the environment from the lockfile and install the project.
+# `--frozen` installs the EXACT versions pinned in uv.lock with NO re-resolution,
+# and uv verifies every downloaded artifact against the hash recorded in the
+# lock. So local dev and the manual test harness (test/test_server.py) run
+# against a reproducible, tamper-evident set of dependencies — a compromised
+# index serving a different "flask 3.0.3" would fail the hash check.
+uv sync --frozen
+
+# Activate it (or skip activation and use `uv run <cmd>`)
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
-
-# Install dependencies
-uv pip install -e .                  # or: uv pip install -r requirements.txt
 ```
 
-If you change dependencies in `pyproject.toml`, regenerate `requirements.txt`:
+> Use `uv sync --frozen`, not `uv pip install -e .`, to set up the test
+> environment. `uv pip install` is the pip-compatible interface: it resolves
+> fresh from the `>=` specifiers in `pyproject.toml`, ignores `uv.lock`, and does
+> not enforce hashes — so it can pull newer (or substituted) versions than the
+> project is pinned to. After intentionally changing dependencies, run `uv lock`
+> to refresh `uv.lock` (and `uv pip compile pyproject.toml -o requirements.txt`
+> to refresh the pip mirror), then commit the updated lock.
+
+If you change dependencies in `pyproject.toml`, refresh both the lockfile and
+the `requirements.txt` pip mirror:
 
 ```
+uv lock                                          # update uv.lock
 uv pip compile pyproject.toml -o requirements.txt
 ```
 
