@@ -5,6 +5,7 @@
 #
 # Usage:  ./build-local.sh [git-ref]      # git-ref defaults to "main"
 #         ./build-local.sh my-branch
+#         USE_LOCAL_REPO=1 ./build-local.sh [git-ref]  # use local git repo instead of downloading
 #
 # Result: workspace/output.img  (flash with Raspberry Pi Imager -> "Use custom")
 #
@@ -13,11 +14,19 @@ set -euo pipefail
 BASE_IMG_URL="https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2025-12-04/2025-12-04-raspios-trixie-armhf-lite.img.xz"
 BASE_IMG_SHA256="1b3e49b67b15050a9f20a60267c145e6d468dc9559dd9cd945130a11401a49ff"
 REPO_REF="${1:-main}"
+USE_LOCAL_REPO="${USE_LOCAL_REPO:-0}"
 
 command -v docker >/dev/null || { echo "docker not found (start OrbStack first)"; exit 1; }
 
 rm -rf workspace scripts
 mkdir -p workspace scripts
+
+# If using local repo, copy it to scripts/files for mounting into CustoPiZer
+if [ "$USE_LOCAL_REPO" = "1" ]; then
+  mkdir -p scripts/files
+  echo ">> Cloning local repo to scripts/files..."
+  git clone -b "$REPO_REF" $(git rev-parse --show-toplevel) scripts/files/rotary-phone-audio-guestbook
+fi
 
 # 1. Download, verify, decompress and grow the base image INSIDE a Linux
 #    container, so we don't depend on macOS having xz / truncate / sha256sum.
@@ -45,7 +54,14 @@ apt-get update -qq
 apt-get install -y -qq git curl
 export REPO_REF="${REPO_REF}"
 export AGB_BAKE_LOGIN=1
-curl -sSL "https://raw.githubusercontent.com/nickpourazima/rotary-phone-audio-guestbook/\${REPO_REF}/install.sh" -o /tmp/install.sh
+if [ "${USE_LOCAL_REPO}" = "1" ]; then
+  # Use local repo mounted at /files
+  export REPO_URL="/files/rotary-phone-audio-guestbook"
+  cp /files/rotary-phone-audio-guestbook/install.sh /tmp/install.sh 
+else
+  # Download from remote
+  curl -sSL "https://raw.githubusercontent.com/nickpourazima/rotary-phone-audio-guestbook/\${REPO_REF}/install.sh" -o /tmp/install.sh
+fi
 bash /tmp/install.sh
 apt-get clean
 rm -rf /var/lib/apt/lists/* /tmp/install.sh
