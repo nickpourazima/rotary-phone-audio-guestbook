@@ -96,6 +96,14 @@ def normalize_path(path):
     return str(path.as_posix())
 
 
+@app.context_processor
+def inject_title():
+    """Inject the UI title into all templates."""
+    current_config = load_config()
+    ui_config = current_config.get('ui') or {}
+    return {'title': ui_config.get('title', 'Audio Guestbook')}
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -183,15 +191,10 @@ def edit_config():
             flash(f"Error updating configuration: {str(e)}", "error")
             # Continue with current configuration but show error
 
-    # Load the current configuration
-    try:
-        with config_path.open("r") as f:
-            current_config = yaml.load(f)
-    except FileNotFoundError as e:
-        logger.error(f"Configuration file not found: {e}")
-        current_config = {}
+    current_config = load_config()
+    current_ui_config = current_config.get('ui') or {}
 
-    return render_template("config.html", config=current_config)
+    return render_template("config.html", config=current_config, ui_config=current_ui_config)
 
 
 @app.route("/recordings/<filename>")
@@ -366,11 +369,29 @@ def shutdown():
         ), 500
 
 
+def load_config():
+    # Load the current configuration
+    try:
+        with config_path.open("r") as f:
+            return yaml.load(f)
+    except FileNotFoundError as e:
+        logger.error(f"Configuration file not found: {e}")
+        return {}
+
 def update_config(form_data):
     """Update the YAML configuration with form data."""
     for key, value in form_data.items():
         # Skip CSRF token if it exists
         if key == 'csrf_token':
+            continue
+
+        # Handle nested config fields with underscore notation (ui_title -> ui.title)
+        if key.startswith('ui_'):
+            nested_key = key[3:]
+            if 'ui' not in config:
+                config['ui'] = {}
+            config['ui'][nested_key] = value
+            logger.info(f"Updated 'ui.{nested_key}' to: {value}")
             continue
 
         # Check if key exists in config

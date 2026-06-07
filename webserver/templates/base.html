@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}" />
-  <title>{% block title %}Audio Guestbook{% endblock %}</title>
+  <title>{% block title %}{{ title }}{% endblock %}</title>
   <link href="{{ url_for('static', filename='css/output.min.css') }}" rel="stylesheet" />
   <!-- Load theme.js first to ensure it initializes before page content -->
   <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
@@ -22,7 +22,7 @@
         <!-- Left Side: Title with vintage phone icon -->
         <a href="{{ url_for('index') }}" class="text-2xl font-bold flex items-center">
           <i class="fas fa-phone-alt mr-2 transform -rotate-45"></i>
-          Audio Guestbook
+          {{ title }}
         </a>
 
         <!-- Right Side: Icons with labels on larger screens -->

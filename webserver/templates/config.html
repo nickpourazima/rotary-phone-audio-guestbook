@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}Audio Guestbook - Settings{% endblock
+{% extends "base.html" %} {% block title %}{{ title }} - Settings{% endblock
 %} {% block content %}
 
 <h1 class="text-3xl font-bold text-center mb-8">Edit Configuration</h1>
@@ -270,6 +270,23 @@
       </div>
     </div>
   </div>
+
+    <!-- UI Settings Card -->
+    <div class="card">
+      <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+        <h2 class="font-bold text-lg text-text dark:text-dark-text">
+          UI Settings
+        </h2>
+      </div>
+      <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
+        <div class="mb-2 lg:mb-4">
+          <label for="ui_title" class="block mb-1 lg:mb-2">Page Title</label>
+          <input type="text" id="ui_title" name="ui_title" value="{{ ui_config.get('title', 'Audio Guestbook') }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Title displayed in browser and header</span>
+        </div>
+      </div>
+    </div>
 
   <!-- Floating Save Button -->
   <div class="bg-primary dark:bg-dark-primary fixed bottom-4 right-4 rounded-full">
