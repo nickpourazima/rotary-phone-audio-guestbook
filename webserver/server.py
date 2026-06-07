@@ -192,8 +192,9 @@ def edit_config():
             # Continue with current configuration but show error
 
     current_config = load_config()
+    current_ui_config = current_config.get('ui') or {}
 
-    return render_template("config.html", config=current_config)
+    return render_template("config.html", config=current_config, ui_config=current_ui_config)
 
 
 @app.route("/recordings/<filename>")
@@ -382,6 +383,15 @@ def update_config(form_data):
     for key, value in form_data.items():
         # Skip CSRF token if it exists
         if key == 'csrf_token':
+            continue
+
+        # Handle nested config fields with underscore notation (ui_title -> ui.title)
+        if key.startswith('ui_'):
+            nested_key = key[3:]
+            if 'ui' not in config:
+                config['ui'] = {}
+            config['ui'][nested_key] = value
+            logger.info(f"Updated 'ui.{nested_key}' to: {value}")
             continue
 
         # Check if key exists in config
