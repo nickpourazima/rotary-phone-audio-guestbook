@@ -164,8 +164,12 @@ function createRecordingItem(filename) {
   row.className =
     "recording-item border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200";
 
+  const formats = [
+    "YYYY-MM-DDTHH-mm-ss",
+    "YYYY-MM-DDTHH:mm:ss"
+  ];
   const dateTime = parseDateTime(filename);
-  const formattedDate = moment(dateTime).format("MMMM D, YYYY [at] h:mm A");
+  const formattedDate = moment(dateTime, formats).format("MMMM D, YYYY [at] h:mm A");
 
   // Generate a random pastel color for the recording icon
   const hue = Math.floor(Math.random() * 360);
@@ -197,7 +201,7 @@ function createRecordingItem(filename) {
 }
 
 function parseDateTime(filename) {
-  const regex = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/;
+  const regex = /(\d{4}-\d{2}-\d{2}T\d{2}[:-]\d{2}[:-]\d{2})/;
   const match = filename.match(regex);
   return match ? match[1] : null;
 }

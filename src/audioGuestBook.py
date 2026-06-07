@@ -107,7 +107,7 @@ def play_wav_interruptible(file_path, pin_hook, hw_mapping, volume, mixer_contro
 
 def start_recording(config):
     """Start arecord process for guest recording."""
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.now().isoformat().replace(':','-')
     recordings_path = Path(config['recordings_path'])
     recordings_path.mkdir(exist_ok=True)
     
