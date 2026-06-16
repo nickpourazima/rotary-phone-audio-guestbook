@@ -77,6 +77,9 @@ function loadRecordings() {
           // Create and configure the Plyr instance with simplified controls
           // Remove the settings control from the options
           return new Plyr(p, {
+            // Local copy of the control-icon sprite so players work offline
+            // (e.g. in hotspot mode); Plyr otherwise fetches it from cdn.plyr.io.
+            iconUrl: '/static/vendor/plyr/plyr.svg',
             controls: ['play', 'progress', 'current-time', 'duration', 'mute', 'volume'],
             displayDuration: true,
             hideControls: false,
