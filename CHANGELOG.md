@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Optional **random playback button** (`playback_gpio`, disabled by default):
+  press it while the handset is off-hook to hear a random earlier message.
+  Supports both a plain switch to GND (`playback_type: NC`) and modules that
+  actively drive the line (`NO`). Skips recordings shorter than
+  `playback_min_duration` and never repeats the message played immediately
+  before.
+
 ## [1.1.0]
 
 Reworked build and provisioning. The setup is now driven by a single script

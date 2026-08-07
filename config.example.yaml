@@ -20,6 +20,19 @@ invert_hook: false # Set to true if your hook behavior is reversed (recording st
 hook_bounce_time: 0.1 # float or None
 recording_limit: 300
 sample_rate: 44100
+# Random playback button (Set to 0 to skip setup of this feature).
+# Press it while the handset is off-hook to hear a random earlier message.
+playback_gpio: 0
+playback_type: NC # 'NC' = idle HIGH, pressed LOW (plain switch to GND);
+                  # 'NO' = idle LOW, pressed HIGH (modules that drive the line)
+# Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.
+playback_bounce_time: 0.1 # float or None
+playback_volume: 1.0
+# Recordings shorter than this are never played back, and the stub recording
+# created by the pickup that triggered playback is discarded.
+playback_min_duration: 2.0
+playback_discard_stub: true
+
 # Record greeting message button (Set to 0 to skip setup of this feature)
 record_greeting_gpio: 23
 record_greeting_type: NC # or 'NO' depending on your hardware configuration
