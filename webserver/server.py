@@ -378,6 +378,22 @@ def load_config():
         logger.error(f"Configuration file not found: {e}")
         return {}
 
+# Fields that may not exist in an older config.yaml yet, with their target
+# types. update_config() drops unknown keys as a safety net, which would
+# otherwise make newer features impossible to enable from the web UI on an
+# upgraded install (the key never gets INTO the config that way).
+NEW_FIELD_TYPES = {
+    'invert_hook': bool,
+    'playback_gpio': int,
+    'playback_type': str,
+    'playback_bounce_time': float,
+    'playback_volume': float,
+    'playback_min_duration': float,
+    'playback_stub_max_duration': float,
+    'playback_discard_stub': bool,
+}
+
+
 def update_config(form_data):
     """Update the YAML configuration with form data."""
     for key, value in form_data.items():
@@ -395,7 +411,7 @@ def update_config(form_data):
             continue
 
         # Check if key exists in config
-        if key not in config and key != 'invert_hook':
+        if key not in config and key not in NEW_FIELD_TYPES:
             logger.warning(f"Form field '{key}' not found in config, skipping")
             continue
 
@@ -403,15 +419,20 @@ def update_config(form_data):
         logger.info(f"Updating '{key}': {config.get(key, 'Not set')} (type: {type(config.get(key, '')).__name__}) → '{value}'")
 
         try:
-            # Convert value based on the type in config or for new boolean fields
-            if key == 'invert_hook' or isinstance(config.get(key), bool):
-                # Convert string to boolean
+            # Convert based on the type already in config, falling back to the
+            # declared type for fields the config does not have yet
+            if key in config and config[key] is not None:
+                target_type = type(config[key])
+            else:
+                target_type = NEW_FIELD_TYPES.get(key, str)
+
+            if target_type is bool:
                 new_value = (value.lower() == "true")
                 logger.info(f"Converting to boolean: {value} → {new_value}")
                 config[key] = new_value
-            elif isinstance(config.get(key), int):
+            elif target_type is int:
                 config[key] = int(value)
-            elif isinstance(config.get(key), float):
+            elif target_type is float:
                 config[key] = float(value)
             else:
                 config[key] = value

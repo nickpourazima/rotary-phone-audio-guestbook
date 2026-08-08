@@ -73,10 +73,12 @@ def is_on_hook(pin, hook_type, invert_hook):
     
     return on_hook
 
-def play_wav_interruptible(file_path, pin_hook, hw_mapping, volume, mixer_control, hook_type, invert_hook):
+def play_wav_interruptible(file_path, pin_hook, hw_mapping, volume, mixer_control, hook_type, invert_hook, abort_check=None):
     """
     Play a WAV file with aplay, checking GPIO during playback.
-    Returns True if played to completion, False if interrupted by on-hook.
+    Returns True if played to completion, False if interrupted by on-hook or
+    by `abort_check` (an optional zero-argument predicate polled alongside the
+    hook; used so the playback button can cut long sounds short).
     """
     if not Path(file_path).exists():
         logger.error(f"Missing audio file: {file_path}")
@@ -96,6 +98,14 @@ def play_wav_interruptible(file_path, pin_hook, hw_mapping, volume, mixer_contro
             # Check if handset is on-hook
             if is_on_hook(pin_hook, hook_type, invert_hook):
                 logger.info(f"Interrupted {Path(file_path).name} (on-hook)")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                return False
+            if abort_check is not None and abort_check():
+                logger.info(f"Interrupted {Path(file_path).name} (playback button)")
                 proc.terminate()
                 try:
                     proc.wait(timeout=1)
@@ -246,6 +256,14 @@ def main():
         )
         prev_playback_state = GPIO.input(config['playback_gpio'])
 
+    # Lets a long playback be cut short by the playback button, not just by
+    # the hook. None when the button is disabled; only constructed when
+    # has_playback is true, so playback_pressed_level is guaranteed bound.
+    playback_pressed = (
+        (lambda: GPIO.input(config['playback_gpio']) == playback_pressed_level)
+        if has_playback else None
+    )
+
     # Shutdown button (optional)
     has_shutdown = config.get('shutdown_gpio', 0) != 0
     if has_shutdown:
@@ -322,7 +340,8 @@ def main():
                     config['greeting_volume'],
                     config['mixer_control_name'],
                     hook_type,
-                    invert_hook
+                    invert_hook,
+                    abort_check=playback_pressed
                 ):
                     prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
                     continue
@@ -340,7 +359,8 @@ def main():
                     config['beep_volume'],
                     config['mixer_control_name'],
                     hook_type,
-                    invert_hook
+                    invert_hook,
+                    abort_check=playback_pressed
                 ):
                     prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
                     continue
@@ -377,7 +397,8 @@ def main():
                         config['time_exceeded_volume'],
                         config['mixer_control_name'],
                         hook_type,
-                        invert_hook
+                        invert_hook,
+                        abort_check=playback_pressed
                     )
             
             prev_was_on_hook = currently_on_hook
@@ -492,11 +513,15 @@ def main():
                             recording_start_ts = None
                         recording_path = None
                         
-                        # That file holds only the beep and a moment of silence
-                        min_duration = float(config.get('playback_min_duration', 2.0))
+                        # Deleting is gated on its own, deliberately tight
+                        # threshold: playback_min_duration decides what is worth
+                        # PLAYING and may be raised freely; the delete window
+                        # must not widen with it. A genuine stub is just the
+                        # beep and a moment of silence, well under a second.
+                        stub_max = float(config.get('playback_stub_max_duration', 1.0))
                         if (config.get('playback_discard_stub', True)
                                 and interrupted is not None and interrupted.exists()
-                                and wav_duration(interrupted) < min_duration):
+                                and wav_duration(interrupted) < stub_max):
                             try:
                                 interrupted.unlink()
                                 logger.info(f"[PLAYBACK] Discarded {interrupted.name} "
@@ -511,6 +536,9 @@ def main():
                             logger.info("[PLAYBACK] No recordings long enough to play yet")
                         else:
                             logger.info(f"[PLAYBACK] Playing {choice.name}")
+                            # Deliberately no abort_check here: a guest still
+                            # holding the button when the message starts would
+                            # abort it instantly.
                             play_wav_interruptible(
                                 str(choice),
                                 config['hook_gpio'],
@@ -521,7 +549,24 @@ def main():
                                 invert_hook
                             )
                             last_played_path = choice
-                            logger.info("[PLAYBACK] Finished - hang up, or lift again to record")
+
+                        # Recoverable ending, played or not: beep and record
+                        # again. An accidental press no longer leaves a dead
+                        # phone until hang-up, and an empty playlist still
+                        # gives the guest audible feedback instead of silence.
+                        if not is_on_hook(config['hook_gpio'], hook_type, invert_hook):
+                            if play_wav_interruptible(
+                                config['beep'],
+                                config['hook_gpio'],
+                                config['alsa_hw_mapping'],
+                                config['beep_volume'],
+                                config['mixer_control_name'],
+                                hook_type,
+                                invert_hook
+                            ) and recording_proc is None:
+                                recording_proc = start_recording(config)
+                                recording_start_ts = time.time()
+                                logger.info("[PLAYBACK] Recording a new message - press again for another playback")
                 
                 prev_playback_state = playback_state
             

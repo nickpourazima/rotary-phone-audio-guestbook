@@ -115,11 +115,18 @@ listen to what others have left.
 - `playback_bounce_time`: Debounce time for the playback button
 - `playback_volume`: Volume level for playback (0.0 to 1.0)
 - `playback_min_duration`: Recordings shorter than this (seconds) are never
-  chosen for playback. An accidental pickup leaves a file containing just the
-  beep and a moment of silence
+  chosen for playback. Safe to raise if short accidental recordings clutter
+  the playlist — it has no influence on what may be deleted
 - `playback_discard_stub`: Whether to delete the recording that the current
   pickup started when the button is pressed (default `true`). It is only ever
-  deleted when shorter than `playback_min_duration`
+  deleted when shorter than `playback_stub_max_duration`
+- `playback_stub_max_duration`: Upper bound (seconds, default `1.0`) for what
+  counts as an accidental stub — a file holding nothing but the beep and a
+  moment of silence. This is deliberately a separate, tight threshold so the
+  destructive path never widens when `playback_min_duration` is raised
+
+All of these can also be changed from the web UI (Config → Playback Button
+Settings).
 
 How it behaves:
 
@@ -131,7 +138,11 @@ How it behaves:
 - Hanging up during playback stops it, like the greeting
 - Press while the handset is **on-hook**: ignored, since the earpiece is the
   only output and nobody would hear it
-- Afterwards the phone returns to idle; hang up and lift again to record
+- Afterwards the phone beeps and starts recording again, so an accidental
+  press does not end the guest's session — and if there was nothing to play
+  yet, the beep doubles as feedback that the press registered
+- Pressing during the greeting, beep, or time-exceeded announcement cuts the
+  announcement short and goes straight to playback
 
 ## Audio Files Configuration
 
@@ -227,13 +238,16 @@ hook_bounce_time: 0.1 # float or None
 recording_limit: 300
 sample_rate: 44100
 
-# Record greeting message button (Set to 0 to skip setup of this feature)
+# Random playback button (Set to 0 to skip setup of this feature)
 playback_gpio: 0
 playback_type: NC
 playback_bounce_time: 0.1
 playback_volume: 1.0
 playback_min_duration: 2.0
 playback_discard_stub: true
+playback_stub_max_duration: 1.0
+
+# Record greeting message button (Set to 0 to skip setup of this feature)
 record_greeting_gpio: 23
 record_greeting_type: NC # or 'NO' depending on your hardware configuration
 # Software bounce compensation this is the length of time (in seconds) that the component will ignore changes in state after an initial change.

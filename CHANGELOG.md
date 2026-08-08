@@ -14,7 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Supports both a plain switch to GND (`playback_type: NC`) and modules that
   actively drive the line (`NO`). Skips recordings shorter than
   `playback_min_duration` and never repeats the message played immediately
-  before.
+  before. After playback the phone beeps and records again, so an accidental
+  press is recoverable and an empty playlist still gives audible feedback.
+  The button also cuts the greeting, beep, and time-exceeded announcements
+  short. Configurable from the web UI (Playback Button Settings).
+- `playback_stub_max_duration` (default `1.0`): separate, tight threshold for
+  the stub-deletion path, so raising `playback_min_duration` to curate the
+  playlist can never widen the delete window.
+- `webserver/server.py update_config()` now accepts known new config fields
+  that are missing from an existing `config.yaml` (typed via
+  `NEW_FIELD_TYPES`), so features added after an install can be enabled from
+  the web UI.
 
 ## [1.1.0]
 

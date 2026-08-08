@@ -247,6 +247,87 @@
     </div>
   </div>
 
+  <!-- Playback Button Settings Card -->
+  <div class="card">
+    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+      <h2 class="font-bold text-lg text-text dark:text-dark-text">
+        Playback Button Settings
+      </h2>
+    </div>
+    <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div>
+          <label for="playback_gpio" class="block mb-1 lg:mb-2">Playback GPIO</label>
+          <input type="number" id="playback_gpio" name="playback_gpio" value="{{ config.get('playback_gpio', 0) }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">BCM pin of the random playback button. 0 disables
+            the feature</span>
+        </div>
+        <div>
+          <label for="playback_type" class="block mb-1 lg:mb-2">Playback Type</label>
+          <input type="text" id="playback_type" name="playback_type" value="{{ config.get('playback_type', 'NC') }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">NC = switch to GND (idle HIGH), NO = module that
+            drives the line (idle LOW)</span>
+        </div>
+        <div>
+          <label for="playback_bounce_time" class="block mb-1 lg:mb-2">Playback Bounce Time</label>
+          <input type="text" id="playback_bounce_time" name="playback_bounce_time"
+            value="{{ config.get('playback_bounce_time', 0.1) }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+        </div>
+        <div>
+          <label for="playback_volume" class="block mb-1 lg:mb-2">Playback Volume</label>
+          <input type="text" id="playback_volume" name="playback_volume"
+            value="{{ config.get('playback_volume', 1.0) }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+        </div>
+        <div>
+          <label for="playback_min_duration" class="block mb-1 lg:mb-2">Playback Min Duration (seconds)</label>
+          <input type="text" id="playback_min_duration" name="playback_min_duration"
+            value="{{ config.get('playback_min_duration', 2.0) }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Recordings shorter than this are never picked for
+            playback</span>
+        </div>
+        <div>
+          <label for="playback_stub_max_duration" class="block mb-1 lg:mb-2">Stub Max Duration (seconds)</label>
+          <input type="text" id="playback_stub_max_duration" name="playback_stub_max_duration"
+            value="{{ config.get('playback_stub_max_duration', 1.0) }}"
+            class="w-full px-3 py-2 border rounded bg-background dark:bg-dark-input-background text-text-primary dark:text-dark-input-text" />
+          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Interrupted recordings shorter than this count as
+            accidental stubs and may be deleted. Keep small</span>
+        </div>
+        <div>
+          <label for="playback_discard_stub" class="block mb-1 lg:mb-2">Discard Stub Recordings</label>
+          <div class="flex items-center space-x-4">
+            {% if config.get('playback_discard_stub', True) %}
+            <label class="inline-flex items-center">
+              <input type="radio" name="playback_discard_stub" value="true" checked class="mr-1" />
+              <span>Yes</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="playback_discard_stub" value="false" class="mr-1" />
+              <span>No</span>
+            </label>
+            {% else %}
+            <label class="inline-flex items-center">
+              <input type="radio" name="playback_discard_stub" value="true" class="mr-1" />
+              <span>Yes</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="playback_discard_stub" value="false" checked class="mr-1" />
+              <span>No</span>
+            </label>
+            {% endif %}
+          </div>
+          <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Delete the stub recording created by the pickup
+            that triggered playback</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Reboot/Shutdown Settings Card -->
   <div class="card">
     <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
