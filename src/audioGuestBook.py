@@ -250,6 +250,7 @@ def main():
         # NC: idle HIGH, pressed LOW (plain switch to GND with a pull-up)
         # NO: idle LOW, pressed HIGH (modules that actively drive the line)
         playback_pressed_level = GPIO.LOW if playback_type == 'NC' else GPIO.HIGH
+        playback_idle_level = GPIO.HIGH if playback_type == 'NC' else GPIO.LOW
         GPIO.setup(
             config['playback_gpio'], GPIO.IN,
             pull_up_down=GPIO.PUD_UP if playback_type == 'NC' else GPIO.PUD_DOWN
@@ -343,9 +344,15 @@ def main():
                     invert_hook,
                     abort_check=playback_pressed
                 ):
+                    # If the button caused this abort, re-arm the press edge:
+                    # a key held since before the pickup was already seen (and
+                    # ignored) while on-hook, so the playback block would
+                    # otherwise never fire for it and the phone would go dead.
+                    if playback_pressed is not None and playback_pressed():
+                        prev_playback_state = playback_idle_level
                     prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
                     continue
-                
+
                 # Beep delay
                 beep_delay = config.get('beep_start_delay', 0)
                 if beep_delay > 0:
@@ -362,9 +369,12 @@ def main():
                     invert_hook,
                     abort_check=playback_pressed
                 ):
+                    # Same re-arm as after the greeting (see above)
+                    if playback_pressed is not None and playback_pressed():
+                        prev_playback_state = playback_idle_level
                     prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
                     continue
-                
+
                 # Start recording if still off-hook
                 if not is_on_hook(config['hook_gpio'], hook_type, invert_hook) and recording_proc is None:
                     recording_proc = start_recording(config)
