@@ -103,6 +103,47 @@ If you experience issues with your hook behavior:
 - `shutdown_gpio`: GPIO pin for a shutdown button (set to 0 to disable)
 - `shutdown_button_hold_time`: Time in seconds to hold the shutdown button (default is 2)
 
+### Random Playback Button
+
+An optional button that plays back a random earlier message, so guests can
+listen to what others have left.
+
+- `playback_gpio`: GPIO pin for the playback button (set to 0 to disable)
+- `playback_type`: `NC` (idle HIGH, pressed LOW — a plain switch to GND, using
+  the internal pull-up) or `NO` (idle LOW, pressed HIGH — for modules that
+  actively drive the line, using the internal pull-down)
+- `playback_bounce_time`: Debounce time for the playback button
+- `playback_volume`: Volume level for playback (0.0 to 1.0)
+- `playback_min_duration`: Recordings shorter than this (seconds) are never
+  chosen for playback. Safe to raise if short accidental recordings clutter
+  the playlist — it has no influence on what may be deleted
+- `playback_discard_stub`: Whether to delete the recording that the current
+  pickup started when the button is pressed (default `true`). It is only ever
+  deleted when shorter than `playback_stub_max_duration`
+- `playback_stub_max_duration`: Upper bound (seconds, default `1.0`) for what
+  counts as an accidental stub — a file holding nothing but the beep and a
+  moment of silence. This is deliberately a separate, tight threshold so the
+  destructive path never widens when `playback_min_duration` is raised
+
+All of these can also be changed from the web UI (Config → Playback Button
+Settings).
+
+How it behaves:
+
+- Press while the handset is **off-hook**: the recording that this pickup
+  started is stopped (and discarded, see above — otherwise the playback would
+  be recorded into it), then a random earlier message plays in the earpiece.
+  The message played immediately before is skipped, so two presses in a row
+  give two different messages
+- Hanging up during playback stops it, like the greeting
+- Press while the handset is **on-hook**: ignored, since the earpiece is the
+  only output and nobody would hear it
+- Afterwards the phone beeps and starts recording again, so an accidental
+  press does not end the guest's session — and if there was nothing to play
+  yet, the beep doubles as feedback that the press registered
+- Pressing during the greeting, beep, or time-exceeded announcement cuts the
+  announcement short and goes straight to playback
+
 ## Audio Files Configuration
 
 ### Greeting Message
@@ -196,6 +237,15 @@ invert_hook: true # Set to true if your hook behavior is reversed (recording sta
 hook_bounce_time: 0.1 # float or None
 recording_limit: 300
 sample_rate: 44100
+
+# Random playback button (Set to 0 to skip setup of this feature)
+playback_gpio: 0
+playback_type: NC
+playback_bounce_time: 0.1
+playback_volume: 1.0
+playback_min_duration: 2.0
+playback_discard_stub: true
+playback_stub_max_duration: 1.0
 
 # Record greeting message button (Set to 0 to skip setup of this feature)
 record_greeting_gpio: 23
