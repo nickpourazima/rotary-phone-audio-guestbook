@@ -420,9 +420,23 @@ def update_config(form_data):
 
         try:
             # Convert based on the type already in config, falling back to the
-            # declared type for fields the config does not have yet
+            # declared type for fields the config does not have yet.
+            #
+            # isinstance, not type(...) is ...: ruamel's round-trip loader
+            # returns ScalarFloat/ScalarInt subclasses to preserve formatting,
+            # so an identity check misses every float already in config.yaml
+            # and silently stores it back as a string. bool is checked first
+            # because bool subclasses int.
             if key in config and config[key] is not None:
-                target_type = type(config[key])
+                existing = config[key]
+                if isinstance(existing, bool):
+                    target_type = bool
+                elif isinstance(existing, int):
+                    target_type = int
+                elif isinstance(existing, float):
+                    target_type = float
+                else:
+                    target_type = str
             else:
                 target_type = NEW_FIELD_TYPES.get(key, str)
 
