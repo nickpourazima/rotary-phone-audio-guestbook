@@ -63,6 +63,8 @@ Once you've completed the hardware setup and flashed the image:
 
    [![image](https://github.com/nickpourazima/rotary-phone-audio-guestbook/raw/main/images/webserver_settings_light.png)](/nickpourazima/rotary-phone-audio-guestbook/blob/main/images/webserver_settings_light.png)
 
+Optional extras, all disabled by default and configurable from the Settings page: a **random playback button** that lets guests hear an earlier message, a button to **record a new greeting**, and a **shutdown button**. See [Hardware](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/hardware.md#optional-random-playback-button) for wiring.
+
 Your audio guest book is now ready for test/deployment! For advanced configuration options and detailed explanations of all settings, refer to the [Configuration](https://github.com/nickpourazima/rotary-phone-audio-guestbook/blob/main/docs/configuration.md) documentation.
 
 ## Hotspot (automatic WiFi fallback)

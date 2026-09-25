@@ -46,6 +46,33 @@ uv lock                                          # update uv.lock
 uv pip compile pyproject.toml -o requirements.txt
 ```
 
+## Running the tests
+
+The automated tests run entirely off-device — no Pi, GPIO, or audio hardware
+needed. They use only the standard library's `unittest`, so no extra test
+dependencies are required beyond the project environment above.
+
+```
+uv run python -m unittest discover -s test -v
+```
+
+- `test/agb_harness.py` makes `src/audioGuestBook.py` importable and drivable
+  on a laptop: a fake `RPi.GPIO`, a virtual clock (so debounce windows and
+  multi-second playbacks resolve instantly), and a fake `subprocess` where
+  `arecord` writes real WAV files matching the virtual time it ran.
+- `test/test_playback_button.py` covers the random playback button (normal
+  pickup, on-hook presses, stub handling, the minimum duration, cutting the
+  greeting short, and recording again afterwards).
+- `test/test_config_update.py` covers how the web UI's config form values are
+  coerced back into typed `config.yaml` values.
+
+Run the suite before opening a PR or cutting a release. For hands-on testing of
+the web UI, use the manual harness instead:
+
+```
+uv run python test/test_server.py    # then browse to http://127.0.0.1:8000
+```
+
 `libffi-dev` is only needed if you compile `gevent` from source inside a venv; the device install uses the prebuilt `python3-gevent` apt package instead.
 
 ## Frontend development with Tailwind CSS
@@ -132,6 +159,7 @@ Notes:
 No golden Pi and no manual image backup. The release image is built reproducibly in CI by [`/.github/workflows/build-image.yml`](../.github/workflows/build-image.yml):
 
 - It downloads the pinned Raspberry Pi OS Lite (Trixie, armhf) base image, runs `install.sh` inside it with CustoPiZer, then compresses and attaches the `.img.gz` (plus a `.sha256`) to the release.
+- **Before tagging:** run the test suite (see [Running the tests](#running-the-tests)) and move the `[Unreleased]` entries in [`CHANGELOG.md`](../CHANGELOG.md) under the new version.
 - **Cut a release:** `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag triggers the build and attaches the image to the release.
 - **Test the build without releasing:** Actions → "Build release image" → Run workflow (ref `main`), then download the artifact.
 

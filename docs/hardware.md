@@ -28,6 +28,23 @@ To accommodate either type, you'll need to update the `config.yaml` with the app
 | ----------------------------------- | -------------------------------------------- |
 | ![image](../images/block_terminal.jpg) | ![image](../images/top_view_block_terminal.jpg) |
 
+### Optional: Random Playback Button
+
+A push button that lets guests hear a random earlier message (disabled by
+default). Any free GPIO pin works (for example GPIO 27).
+
+- **Plain push button / switch:** wire one leg to the GPIO pin and the other to
+  GND, and set `playback_type: NC`. The internal pull-up keeps the line HIGH
+  until the button is pressed, so no external resistor is needed.
+- **Module that actively drives the line** (e.g. a touch sensor that outputs
+  HIGH when pressed): connect its signal output to the GPIO pin, and set
+  `playback_type: NO`.
+
+Then set `playback_gpio` to the BCM pin number, either in `config.yaml` or from
+the web UI (Config → Playback Button Settings). See the
+[Configuration Guide](configuration.md#random-playback-button) for all options
+and how the button behaves.
+
 ### Phone Cord
 
 - The wires from the handset cord need to be connected to the USB audio interface

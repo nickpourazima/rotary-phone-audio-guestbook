@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-25
+
 ### Added
 
 - Optional **random playback button** (`playback_gpio`, disabled by default):
@@ -17,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before. After playback the phone beeps and records again, so an accidental
   press is recoverable and an empty playlist still gives audible feedback.
   The button also cuts the greeting, beep, and time-exceeded announcements
-  short. Configurable from the web UI (Playback Button Settings).
+  short. Configurable from the web UI (Playback Button Settings) (#121).
 - `playback_stub_max_duration` (default `1.0`): separate, tight threshold for
   the stub-deletion path, so raising `playback_min_duration` to curate the
   playlist can never widen the delete window.
@@ -25,6 +27,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that are missing from an existing `config.yaml` (typed via
   `NEW_FIELD_TYPES`), so features added after an install can be enabled from
   the web UI.
+
+### Tests
+
+- Automated, off-device test suite (stdlib `unittest`, no new dependencies),
+  run with `python -m unittest discover -s test` (#122):
+  - `test/agb_harness.py` makes `src/audioGuestBook.py` runnable without a Pi:
+    fake `RPi.GPIO`, a virtual clock, and a fake `arecord`/`aplay` that writes
+    real WAV files.
+  - `test/test_playback_button.py` covers the playback button's behaviour.
+  - `test/test_config_update.py` covers the web UI's config type coercion,
+    including ruamel's `ScalarFloat`/`ScalarInt` values, so float settings are
+    never saved back as quoted strings.
+
+## [1.1.1] - 2026-06-16
+
+### Added
+
+- FontAwesome and Plyr are vendored locally, so the web UI's icons and audio
+  player work in hotspot/offline mode without any CDN (#117).
+- Configurable web UI title via the `ui.title` config option (#114).
+- `USE_LOCAL_REPO` option for `tools/build-local.sh` to build the image from a
+  local checkout (#113).
+
+### Changed
+
+- Recording file names use `-` instead of `:` in the timestamp, for
+  compatibility with filesystems (e.g. FAT/exFAT, Windows) that reject `:`
+  (#115).
+- The manual web UI test harness (`test/test_server.py`) reuses the real
+  webserver app instead of a copy of its routes (#111), and the local test
+  environment is set up from `uv.lock` with hash verification (#112).
 
 ## [1.1.0]
 
@@ -94,4 +127,7 @@ and the release image is produced reproducibly in CI, so no hand-configured
 - Trixie is expected to be the last Raspberry Pi OS release supporting armv6
   (original Pi 1 / Zero). The Pi Zero 2 W is the recommended successor.
 
-[1.1.0]: https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases
+[Unreleased]: https://github.com/nickpourazima/rotary-phone-audio-guestbook/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/nickpourazima/rotary-phone-audio-guestbook/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/nickpourazima/rotary-phone-audio-guestbook/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/nickpourazima/rotary-phone-audio-guestbook/releases/tag/v1.1.0
