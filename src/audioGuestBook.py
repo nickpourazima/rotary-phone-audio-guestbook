@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import logging
 import RPi.GPIO as GPIO
 import random
@@ -203,6 +204,77 @@ def pick_random_recording(config, exclude=None, last_played=None):
     return random.choice(candidates)
 
 
+def is_playback_mode(config):
+    """True if the phone plays old messages on pickup instead of recording."""
+    return str(config.get('phone_mode', 'record')).lower() == 'playback'
+
+
+def playback_state_path(config):
+    """Where the last played message is remembered (survives power loss)."""
+    configured = config.get('phone_playback_state_file')
+    if configured:
+        return Path(configured)
+    return Path(__file__).parent / "../playback_state.json"
+
+
+def load_playback_state(config):
+    """Name of the message played last, or None if unknown/unreadable."""
+    try:
+        with open(playback_state_path(config), 'r') as f:
+            return json.load(f).get('last_played')
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def save_playback_state(config, name):
+    """
+    Persist the last played message name. Written to a temp file, fsynced and
+    renamed so a power cut mid-write can never leave a corrupt state file.
+    """
+    path = playback_state_path(config)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with open(tmp, 'w') as f:
+            json.dump({'last_played': name}, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except OSError as e:
+        logger.warning(f"Could not save playback state: {e}")
+
+
+def pick_next_recording(config, last_name=None):
+    """
+    Choose the message for the next pickup in playback mode.
+
+    Candidates are all recordings of at least `playback_min_duration`.
+    - sequential: oldest to newest (file names are ISO timestamps), continuing
+      after `last_name` and wrapping around at the end. Going by name rather
+      than index keeps the position right if files were added or deleted.
+    - random: any message but the one played last (if there is a choice).
+
+    Returns a Path, or None if there is nothing to play.
+    """
+    recordings_path = Path(config['recordings_path'])
+    min_duration = float(config.get('playback_min_duration', 2.0))
+    candidates = sorted(
+        f for f in recordings_path.glob("*.wav")
+        if wav_duration(f) >= min_duration
+    )
+    if not candidates:
+        return None
+
+    if str(config.get('phone_playback_order', 'sequential')).lower() == 'random':
+        pool = [f for f in candidates if f.name != last_name] or candidates
+        return random.choice(pool)
+
+    if last_name is not None:
+        for f in candidates:
+            if f.name > last_name:
+                return f
+    return candidates[0]
+
+
 def check_shutdown_button(pin_shutdown, hold_time=4.0):
     """
     Check if shutdown button is held LOW for hold_time seconds.
@@ -244,7 +316,10 @@ def main():
         prev_record_greeting_state = GPIO.input(config['record_greeting_gpio'])
     
     # Random playback button (optional)
-    has_playback = config.get('playback_gpio', 0) != 0
+    # Playback mode (phone gifted to the couple): pickup plays a message, so the
+    # record-oriented playback button has no role there.
+    playback_mode = is_playback_mode(config)
+    has_playback = config.get('playback_gpio', 0) != 0 and not playback_mode
     if has_playback:
         playback_type = config.get('playback_type', 'NC')
         # NC: idle HIGH, pressed LOW (plain switch to GND with a pull-up)
@@ -272,7 +347,13 @@ def main():
     
     logger.info("=" * 50)
     logger.info("Rotary Phone Audio Guest Book - Ready")
-    logger.info("Lift handset to begin recording a message")
+    if playback_mode:
+        logger.info(
+            f"PLAYBACK MODE ({config.get('phone_playback_order', 'sequential')}): "
+            f"lift handset to hear a message"
+        )
+    else:
+        logger.info("Lift handset to begin recording a message")
     if has_playback:
         logger.info(
             f"Playback button on GPIO{config['playback_gpio']}: "
@@ -321,7 +402,30 @@ def main():
             # OFF-HOOK: User lifted handset
             if prev_was_on_hook and not currently_on_hook:
                 logger.info("\n[OFF-HOOK] Handset lifted")
-                
+
+                if playback_mode:
+                    # No greeting, no beep, no recording: just the next message
+                    choice = pick_next_recording(config, load_playback_state(config))
+                    if choice is None:
+                        logger.info("[PLAYBACK MODE] No recordings to play")
+                    else:
+                        logger.info(f"[PLAYBACK MODE] Playing {choice.name}")
+                        # Remember it before playing so a power cut mid-message
+                        # still moves on to the next one
+                        save_playback_state(config, choice.name)
+                        play_wav_interruptible(
+                            str(choice),
+                            config['hook_gpio'],
+                            config['alsa_hw_mapping'],
+                            config.get('playback_volume', 1.0),
+                            config['mixer_control_name'],
+                            hook_type,
+                            invert_hook
+                        )
+                    prev_was_on_hook = is_on_hook(config['hook_gpio'], hook_type, invert_hook)
+                    continue
+
+
                 # Greeting start delay
                 delay = config.get('greeting_start_delay', 0)
                 if delay > 0:

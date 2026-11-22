@@ -384,6 +384,8 @@ def load_config():
 # upgraded install (the key never gets INTO the config that way).
 NEW_FIELD_TYPES = {
     'invert_hook': bool,
+    'phone_mode': str,
+    'phone_playback_order': str,
     'playback_gpio': int,
     'playback_type': str,
     'playback_bounce_time': float,

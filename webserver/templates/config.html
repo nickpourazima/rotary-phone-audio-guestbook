@@ -11,6 +11,45 @@
 {% endfor %} {% endif %} {% endwith %}
 
 <form id="form-id" method="POST" action="{{ url_for('edit_config') }}" enctype="multipart/form-data" class="space-y-4">
+  <!-- Phone Mode Card -->
+  <div class="card">
+    <div class="bg-primary dark:bg-dark-primary p-2 lg:p-4 rounded-t">
+      <h2 class="font-bold text-lg text-text dark:text-dark-text">
+        Phone Mode
+      </h2>
+    </div>
+    <div class="bg-secondary dark:bg-dark-secondary text-text dark:text-dark-text shadow-md p-4 rounded-b">
+      <div class="mb-2 lg:mb-4">
+        <span class="block mb-1 lg:mb-2">Mode</span>
+        <div class="flex flex-col space-y-1">
+          <label class="inline-flex items-center">
+            <input type="radio" name="phone_mode" value="record" {% if config.get('phone_mode', 'record') != 'playback' %}checked{% endif %} class="mr-1" />
+            <span>Recording mode (greeting, beep, record a message)</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="radio" name="phone_mode" value="playback" {% if config.get('phone_mode', 'record') == 'playback' %}checked{% endif %} class="mr-1" />
+            <span>Playback mode (lifting the handset plays a message)</span>
+          </label>
+        </div>
+      </div>
+      <div class="mb-2 lg:mb-4">
+        <span class="block mb-1 lg:mb-2">Playback order (playback mode only)</span>
+        <div class="flex flex-col space-y-1">
+          <label class="inline-flex items-center">
+            <input type="radio" name="phone_playback_order" value="sequential" {% if config.get('phone_playback_order', 'sequential') != 'random' %}checked{% endif %} class="mr-1" />
+            <span>In the order recorded</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="radio" name="phone_playback_order" value="random" {% if config.get('phone_playback_order', 'sequential') == 'random' %}checked{% endif %} class="mr-1" />
+            <span>Random</span>
+          </label>
+        </div>
+        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">The last played message is remembered, also
+          across power loss</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Audio Settings Card -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
     <div class="card">

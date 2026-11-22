@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Playback mode** (`phone_mode: playback`, selectable in the web UI): lifting
+  the handset plays one recorded message, with no greeting, beep or recording.
+  `phone_playback_order` is `sequential` (oldest first, wrapping around) or
+  `random`. The last played message is persisted (`playback_state.json`), so
+  the phone resumes where it left off after a power cut.
+
 ## [1.2.0] - 2026-09-25
 
 ### Added

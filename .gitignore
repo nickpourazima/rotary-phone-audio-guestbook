@@ -16,3 +16,5 @@ test/test_config.yaml
 config.yaml
 .claude
 CLAUDE.md
+playback_state.json
+playback_state.json.tmp

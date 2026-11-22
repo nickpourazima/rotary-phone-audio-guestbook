@@ -20,6 +20,18 @@ invert_hook: false # Set to true if your hook behavior is reversed (recording st
 hook_bounce_time: 0.1 # float or None
 recording_limit: 300
 sample_rate: 44100
+# Phone mode - exactly one of the two is active:
+#   record   = guestbook: greeting, beep, record the guest's message (default)
+#   playback = gift mode: lifting the handset plays one recorded message,
+#              no greeting, no beep, no recording
+phone_mode: record
+# Playback mode only: 'sequential' = in the order recorded (oldest first, then
+# starts over), 'random' = random message (never the same one twice in a row)
+phone_playback_order: sequential
+# The last played message is remembered in this file, so the phone carries on
+# where it left off after a power cut. Empty = playback_state.json in the
+# install directory.
+phone_playback_state_file:
 # Random playback button (Set to 0 to skip setup of this feature).
 # Press it while the handset is off-hook to hear a random earlier message.
 playback_gpio: 0

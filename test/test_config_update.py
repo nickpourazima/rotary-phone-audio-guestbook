@@ -107,6 +107,13 @@ class UpgradedInstallTest(unittest.TestCase):
         server.update_config({"playback_discard_stub": "false"})
         self.assertIs(server.config["playback_discard_stub"], False)
 
+    def test_phone_mode_fields(self):
+        for key in ("phone_mode", "phone_playback_order"):
+            server.config.pop(key, None)
+        server.update_config({"phone_mode": "playback", "phone_playback_order": "random"})
+        self.assertEqual(server.config["phone_mode"], "playback")
+        self.assertEqual(server.config["phone_playback_order"], "random")
+
     def test_new_str_field(self):
         del server.config["playback_type"]
         server.update_config({"playback_type": "NO"})
